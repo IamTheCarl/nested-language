@@ -1,0 +1,10 @@
+[package]
+name = "nested_language_compiler"
+version = "0.0.0"
+license = "MIT"
+description = "The compiler for Nested Language, a language designed for running sandboxed usercode that is loaded at runtime."
+authors = ["James Carl <jamescarl96@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+nom = "5.0.0"
