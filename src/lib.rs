@@ -1,6 +1,7 @@
 
 use std::fmt::Formatter;
 
+use nom::Err as NomErr;
 use nom::sequence::delimited;
 use nom::IResult;
 use nom::bytes::complete::take_while1;
@@ -21,53 +22,12 @@ use nom::bytes::complete::take_until;
 use nom::multi::many0_count;
 use nom::combinator::value;
 use nom::character::complete::char;
+use nom::character::complete::alpha1;
+use nom::error::VerboseErrorKind;
 
 // All tests are kept in their own module.
 #[cfg(test)]
 mod test;
-
-/*
-enum Type {
-    bool,
-    i8, i16, i32, i64,
-    u8, u16, u32, u64,
-    OwnedStruct (&Struct),
-    BorrowedStruct (&Struct),
-    Tuple(count: u32, Vec<Type>),
-}
-
-Variable {
-    type: Type,
-    lifetime_start_line: u32,
-    lifetine_end_line: u32,
-}
-
-Trait {
-    traits: Vec<&Trait>,
-    public_functions: Vec<Function>,
-    private_functions: Vec<Function>,
-}
-
-Struct {
-    traits: Vec<&Trait>,
-    variables: Vec<&Type>,
-    public_functions,
-    private_functions,
-}
-
-Instruction {
-    condition: u8,
-    op: u8,
-    line: u32,
-}
-
-Function {
-    arguments: Vec<Type>,
-    return_type: Type,
-    doc_comment: String,
-    instructions: Vec<Instruction>,
-}
-*/
 
 pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
@@ -87,6 +47,12 @@ impl CompileMessage {
     pub fn get_message(&self) -> &str { &self.message }
 }
 
+pub enum NLAccessRule {
+    Hidden,
+    Immutable,
+    Mutable,
+}
+
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum NLType {
     Boolean,
@@ -98,24 +64,26 @@ pub enum NLType {
     BorrowedTrait(String),
 }
 
-pub struct NLVariable {
+pub struct NLStructVariable {
     name: String,
     my_type: NLType,
+    access: NLAccessRule,
 }
 
-impl NLVariable {
+impl NLStructVariable {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_type(&self) -> &NLType { &self.my_type }
+    pub fn get_access_rule(&self) -> &NLAccessRule { &self.access }
 }
 
 pub struct NLStruct {
     name: String,
-    variables: Vec<NLVariable>,
+    variables: Vec<NLStructVariable>,
 }
 
 impl NLStruct {
     pub fn get_name(&self) -> &str { &self.name }
-    pub fn get_variables(&self) -> &Vec<NLVariable> { &self.variables }
+    pub fn get_variables(&self) -> &Vec<NLStructVariable> { &self.variables }
 }
 
 pub struct NLTrait {
@@ -211,6 +179,29 @@ fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {
     Ok((input, CoreDeceleration::Trait(new_trait)))
 }
 
+fn read_visibility(input: &str) -> ParserResult<NLAccessRule> {
+    let (input, _) = blank(input)?;
+    let (input, tag) = alpha1(input)?;
+    let (input, _) = blank(input)?;
+
+    match tag {
+
+        "hid" => Ok((input, NLAccessRule::Hidden)),
+        "imm" => Ok((input, NLAccessRule::Immutable)),
+        "mut" => Ok((input, NLAccessRule::Mutable)),
+
+        _ => {
+            let vek = VerboseErrorKind::Context("Invalid variable visibility tag.");
+
+            let ve = VerboseError {
+                errors: vec![(input, vek)]
+            };
+
+            Err(NomErr::Error(ve))
+        }
+    }
+}
+
 fn read_variable_name(input: &str) -> ParserResult<&str> {
     take_while1(is_name)(input)
 }
@@ -238,18 +229,20 @@ fn read_variable_type(input: &str) -> ParserResult<NLType> {
     Ok((input, the_type))
 }
 
-fn read_var_definition(input: &str) -> ParserResult<NLVariable> {
+fn read_var_definition(input: &str) -> ParserResult<NLStructVariable> {
 
     let (input, _) = blank(input)?;
+    let (input, vision) = read_visibility(input)?;
     let (input, name) = read_variable_name(input)?;
     let (input, _) = blank(input)?;
     let (input, _) = char(':')(input)?; // That : between the variable name and its type.
     let (input, _) = blank(input)?;
     let (input, nl_type) = read_variable_type(input)?;
 
-    let var = NLVariable {
+    let var = NLStructVariable {
         name: String::from(name),
         my_type: nl_type,
+        access: vision,
     };
 
     Ok((input, var))
