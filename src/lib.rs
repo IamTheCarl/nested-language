@@ -47,6 +47,7 @@ impl CompileMessage {
     pub fn get_message(&self) -> &str { &self.message }
 }
 
+#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum NLAccessRule {
     Hidden,
     Immutable,
@@ -190,15 +191,7 @@ fn read_visibility(input: &str) -> ParserResult<NLAccessRule> {
         "imm" => Ok((input, NLAccessRule::Immutable)),
         "mut" => Ok((input, NLAccessRule::Mutable)),
 
-        _ => {
-            let vek = VerboseErrorKind::Context("Invalid variable visibility tag.");
-
-            let ve = VerboseError {
-                errors: vec![(input, vek)]
-            };
-
-            Err(NomErr::Error(ve))
-        }
+        _ =>     Ok((input, NLAccessRule::Hidden)), // Hidden by default.
     }
 }
 
