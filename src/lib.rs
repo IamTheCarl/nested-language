@@ -2,7 +2,6 @@
 use std::fmt::Formatter;
 
 use nom::sequence::delimited;
-use nom::bytes::complete::take_while;
 use nom::IResult;
 use nom::bytes::complete::take_while1;
 use nom::combinator::opt;
@@ -21,6 +20,7 @@ use nom::sequence::terminated;
 use nom::bytes::complete::take_until;
 use nom::multi::many0_count;
 use nom::combinator::value;
+use nom::character::complete::char;
 
 // All tests are kept in their own module.
 #[cfg(test)]
@@ -178,11 +178,13 @@ fn read_comments(input: &str) -> ParserResult<&str> {
 
 fn blank(input: &str) -> ParserResult<()> {
     value((), preceded(multispace0, read_comments))(input)
-    //take_while(is_white_space)(input)
 }
 
 fn is_name(c: char) -> bool {
-    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+    match c {
+        '_' => true,
+        _ => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+    }
 }
 
 fn read_struct_or_trait_name(data: &str) -> ParserResult<&str> {
@@ -196,8 +198,8 @@ fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {
         name: String::from(name)
     };
 
-    let (input, _) = tag("{")(input)?;
-    let (input, _) = tag("}")(input)?;
+    let (input, _) = char('{')(input)?;
+    let (input, _) = char('}')(input)?;
 
     /*do_parse!(input,
         char!("{") //>>
@@ -209,28 +211,13 @@ fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {
     Ok((input, CoreDeceleration::Trait(new_trait)))
 }
 
-fn is_var_name_end(c: char) -> bool {
-    match c {
-        ' ' | '\t' | '\r' | '\n' | ':' => true,
-        _ => false
-    }
-}
-
-fn read_variable_name(data: &str) -> ParserResult<&str> {
-    delimited(blank, take_while1(is_name), take_while(is_var_name_end))(data)
-}
-
-fn is_type_name_end(c: char) -> bool {
-    match c {
-        ' ' | '\t' | '\r' | '\n' | ',' => true,
-        _ => false
-    }
+fn read_variable_name(input: &str) -> ParserResult<&str> {
+    take_while1(is_name)(input)
 }
 
 fn read_variable_type(input: &str) -> ParserResult<NLType> {
     // let (input, type_name) = take!(input, 5 )?;
-    let (input, type_name) =
-        delimited(blank, alphanumeric0, take_while(is_type_name_end))(input)?;
+    let (input, type_name) = alphanumeric0(input)?;
 
     // TODO figure out how to differentiate traits and structs.
     let the_type = match type_name {
@@ -253,10 +240,12 @@ fn read_variable_type(input: &str) -> ParserResult<NLType> {
 
 fn read_var_definition(input: &str) -> ParserResult<NLVariable> {
 
+    let (input, _) = blank(input)?;
     let (input, name) = read_variable_name(input)?;
-    let (input, _) = tag(":")(input)?; // That : between the variable name and its type.
+    let (input, _) = blank(input)?;
+    let (input, _) = char(':')(input)?; // That : between the variable name and its type.
+    let (input, _) = blank(input)?;
     let (input, nl_type) = read_variable_type(input)?;
-    let (input, _) = opt(tag(","))(input)?;
 
     let var = NLVariable {
         name: String::from(name),
@@ -276,7 +265,7 @@ fn read_struct(input: &str) -> ParserResult<CoreDeceleration> {
 
     let vars = &mut new_struct.variables;
 
-    let (input, _) = tag("{")(input)?;
+    let (input, _) = char('{')(input)?;
     let mut input = input;
 
     loop {
@@ -286,13 +275,28 @@ fn read_struct(input: &str) -> ParserResult<CoreDeceleration> {
         match var_definition {
             Some(new_variable) => {
                 vars.push(new_variable);
+                let (new_input, comma) = opt(char(','))(input)?;
+                input = new_input;
+                match comma {
+                    // We have a comma, so it is optional that we have another deceleration.
+                    Some(_) => {
+                        // Just go back to the top of the loop.
+                        continue;
+                    },
+                    None => {
+                        // No comma, we must end the loop.
+                        break;
+                    }
+                }
             },
             None => {
                 break;
             }
         }
     }
-    let (input, _) = tag("}")(input)?;
+
+    let (input, _) = blank(input)?;
+    let (input, _) = char('}')(input)?;
 
     Ok((input, CoreDeceleration::Struct(new_struct)))
 }
