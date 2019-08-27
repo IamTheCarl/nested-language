@@ -3,8 +3,10 @@ name = "nested_language_compiler"
 version = "0.0.0"
 license = "MIT"
 description = "The compiler for Nested Language, a language designed for running sandboxed usercode that is loaded at runtime."
+repository = "https://github.com/crazycarl/nested-language-compiler"
 authors = ["James Carl <jamescarl96@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 nom = "5.0.0"
+voca_rs = "1.8.0"
