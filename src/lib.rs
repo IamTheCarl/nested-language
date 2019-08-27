@@ -10,9 +10,17 @@ use nom::bytes::complete::tag;
 use nom::character::complete::alphanumeric0;
 use nom::error::VerboseError;
 use nom::error::convert_error;
+use nom::combinator::recognize;
+use nom::character::complete::multispace0;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use nom::branch::alt;
+use nom::sequence::preceded;
+use nom::sequence::terminated;
+use nom::bytes::complete::take_until;
+use nom::multi::many0_count;
+use nom::combinator::value;
 
 // All tests are kept in their own module.
 #[cfg(test)]
@@ -155,8 +163,22 @@ impl std::fmt::Display for ParseError {
     }
 }
 
-fn is_white_space(c: char) -> bool {
-    c == ' ' || c == '\t' || c == '\r' || c == '\n'
+fn read_comment(input: &str) -> ParserResult<&str> {
+    alt((
+        preceded(tag("//"), terminated(take_until("\n"), tag("\n"))),
+        preceded(tag("/*"), terminated(take_until("*/"), tag("*/"))),
+    ))(input)
+}
+
+fn read_comments(input: &str) -> ParserResult<&str> {
+    recognize(
+        many0_count(terminated(read_comment, multispace0))
+    )(input)
+}
+
+fn blank(input: &str) -> ParserResult<()> {
+    value((), preceded(multispace0, read_comments))(input)
+    //take_while(is_white_space)(input)
 }
 
 fn is_name(c: char) -> bool {
@@ -164,7 +186,7 @@ fn is_name(c: char) -> bool {
 }
 
 fn read_struct_or_trait_name(data: &str) -> ParserResult<&str> {
-    delimited(take_while(is_white_space), take_while1(is_name), take_while(is_white_space))(data)
+    delimited(blank, take_while1(is_name), blank)(data)
 }
 
 fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {
@@ -188,21 +210,27 @@ fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {
 }
 
 fn is_var_name_end(c: char) -> bool {
-    is_white_space(c) || c == ':'
+    match c {
+        ' ' | '\t' | '\r' | '\n' | ':' => true,
+        _ => false
+    }
 }
 
 fn read_variable_name(data: &str) -> ParserResult<&str> {
-    delimited(take_while(is_white_space), take_while1(is_name), take_while(is_var_name_end))(data)
+    delimited(blank, take_while1(is_name), take_while(is_var_name_end))(data)
 }
 
 fn is_type_name_end(c: char) -> bool {
-    is_white_space(c) || c == ','
+    match c {
+        ' ' | '\t' | '\r' | '\n' | ',' => true,
+        _ => false
+    }
 }
 
 fn read_variable_type(input: &str) -> ParserResult<NLType> {
     // let (input, type_name) = take!(input, 5 )?;
     let (input, type_name) =
-        delimited(take_while(is_white_space), alphanumeric0, take_while(is_type_name_end))(input)?;
+        delimited(blank, alphanumeric0, take_while(is_type_name_end))(input)?;
 
     // TODO figure out how to differentiate traits and structs.
     let the_type = match type_name {

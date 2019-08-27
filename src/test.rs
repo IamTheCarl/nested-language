@@ -166,3 +166,39 @@ fn two_variable_struct_no_ending_comma() {
     assert_eq!(variable.name, "other_variable", "Variable had wrong name.");
     assert_eq!(variable.my_type, NLType::I32, "Variable had wrong type.");
 }
+
+#[test]
+/// Compile a file with an empty struct and an empty trait. This one is special because it has single line comments in it.
+fn empty_struct_and_trait_single_line_comments() {
+    let file_name = "tests/empty_struct_and_trait_with_single_line_comments.nl";
+    let file = parse_file(&mut Path::new(file_name)).unwrap();
+
+    assert_eq!(file.name, "empty_struct_and_trait_with_single_line_comments.nl", "File name not copied correctly.");
+    assert_eq!(file.warnings.len(), 0, "Unwarranted warning.");
+
+    assert_eq!(file.traits.len(), 1, "Wrong number of traits.");
+    let my_trait = &file.traits[0];
+    assert_eq!(my_trait.name, "MyTrait", "Wrong name for trait.");
+
+    assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
+    let my_struct = &file.structs[0];
+    assert_eq!(my_struct.name, "MyStruct", "Wrong name for struct.");
+}
+
+#[test]
+/// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
+fn empty_struct_and_trait_multi_line_comments() {
+    let file_name = "tests/empty_struct_and_trait_with_multi_line_comments.nl";
+    let file = parse_file(&mut Path::new(file_name)).unwrap();
+
+    assert_eq!(file.name, "empty_struct_and_trait_with_multi_line_comments.nl", "File name not copied correctly.");
+    assert_eq!(file.warnings.len(), 0, "Unwarranted warning.");
+
+    assert_eq!(file.traits.len(), 1, "Wrong number of traits.");
+    let my_trait = &file.traits[0];
+    assert_eq!(my_trait.name, "MyTrait", "Wrong name for trait.");
+
+    assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
+    let my_struct = &file.structs[0];
+    assert_eq!(my_struct.name, "MyStruct", "Wrong name for struct.");
+}
