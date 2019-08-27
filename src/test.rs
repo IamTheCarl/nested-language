@@ -202,3 +202,37 @@ fn empty_struct_and_trait_multi_line_comments() {
     let my_struct = &file.structs[0];
     assert_eq!(my_struct.name, "MyStruct", "Wrong name for struct.");
 }
+
+#[test]
+/// Compile a file with struct with a variable with an invalid type.
+fn struct_with_bad_variable_type() {
+    let file_name = "tests/struct_with_single_variable_bad_type.nl";
+    let file = parse_file(&mut Path::new(file_name));
+
+    match file {
+        Err(error) => {
+            // Everything is fine! ... in a way.
+            assert!(error.description().contains("unknown variable type"));
+        },
+        Ok(_) => {
+            panic!("No error when one was expected.");
+        }
+    }
+}
+
+#[test]
+/// Compile a file with struct with a variable with an invalid type.
+fn struct_with_bad_root() {
+    let file_name = "tests/bad_root.nl";
+    let file = parse_file(&mut Path::new(file_name));
+
+    match file {
+        Err(error) => {
+            // Everything is fine! ... in a way.
+            assert!(error.description().contains("root of file. Only traits and structs may be defined here."));
+        },
+        Ok(_) => {
+            panic!("No error when one was expected.");
+        }
+    }
+}

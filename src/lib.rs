@@ -211,22 +211,27 @@ fn read_variable_type(input: &str) -> ParserResult<NLType> {
     let (input, type_name) = alphanumeric0(input)?;
 
     // TODO figure out how to differentiate traits and structs.
-    let the_type = match type_name {
-        "i8" => NLType::I8,
-        "i16" => NLType::I16,
-        "i32" => NLType::I32,
-        "i64" => NLType::I64,
-        "u8" => NLType::U8,
-        "u16" => NLType::U16,
-        "u32" => NLType::U32,
-        "u64" => NLType::U64,
-        "bool" => NLType::Boolean,
+    match type_name {
+        "i8"   => Ok((input, NLType::I8)),
+        "i16"  => Ok((input, NLType::I16)),
+        "i32"  => Ok((input, NLType::I32)),
+        "i64"  => Ok((input, NLType::I64)),
+        "u8"   => Ok((input, NLType::U8)),
+        "u16"  => Ok((input, NLType::U16)),
+        "u32"  => Ok((input, NLType::U32)),
+        "u64"  => Ok((input, NLType::U64)),
+        "bool" => Ok((input, NLType::Boolean)),
         _ => {
-            panic!("Unknown variable type."); // TODO pass this error.
-        }
-    };
 
-    Ok((input, the_type))
+            let vek = VerboseErrorKind::Context("unknown variable type");
+
+            let ve = VerboseError {
+                errors: vec![(input, vek)]
+            };
+
+            Err(NomErr::Failure(ve))
+        }
+    }
 }
 
 fn read_var_definition(input: &str) -> ParserResult<NLStructVariable> {
@@ -331,9 +336,13 @@ fn parse_file_internal(input: &str) -> ParserResult<NLFile> {
                         file.traits.push(nl_trait);
                     },
                     CoreDeceleration::Unknown => {
-                        // TODO make this error correctly.
-                        // Err(nom::error::VerboseError)
-                        panic!("Invalid core def.");
+                        let vek = VerboseErrorKind::Context("root of file. Only traits and structs may be defined here.");
+
+                        let ve = VerboseError {
+                            errors: vec![(input, vek)]
+                        };
+
+                        return Err(NomErr::Failure(ve));
                     }
                 }
             },
