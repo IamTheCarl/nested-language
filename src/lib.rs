@@ -43,9 +43,11 @@ pub enum NLAccessRule {
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum NLType {
+    None,
     Boolean,
     I8, I16, I32, I64,
     U8, U16, U32, U64,
+    Tuple(Vec<NLType>),
     OwnedStruct(String),
     BorrowedStruct(String),
     OwnedTrait(String),
@@ -62,6 +64,22 @@ impl NLStructVariable {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_type(&self) -> &NLType { &self.my_type }
     pub fn get_access_rule(&self) -> &NLAccessRule { &self.access }
+}
+
+pub struct NLArgument {
+    name: String,
+    nl_type: NLType,
+}
+
+pub struct NLBlock {
+
+}
+
+pub struct NLMethod {
+    name: String,
+    arguments: Vec<NLArgument>,
+    return_type: NLType,
+    block: Option<NLBlock>,
 }
 
 pub struct NLStruct {
@@ -156,6 +174,10 @@ fn is_name(c: char) -> bool {
 
 fn read_struct_or_trait_name(data: &str) -> ParserResult<&str> {
     delimited(blank, take_while1(is_name), blank)(data)
+}
+
+fn read_method(input: &str) -> ParserResult<NLMethod> {
+    unimplemented!()
 }
 
 fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {

@@ -212,3 +212,55 @@ fn struct_empty_self_implementation() {
 
     assert_eq!(implementation.name, "Self", "Implementation had wrong name.");
 }
+
+#[test]
+/// Construct a blank and unimplemented method.
+fn method_no_arg_no_return_no_impl() {
+    let code = "met my_method();";
+
+    let (_, method) = read_method(code).unwrap();
+
+    assert_eq!(method.name, "my_method", "Method had wrong name.");
+    assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");
+    assert_eq!(method.return_type, NLType::None, "Wrong return type.");
+    assert_eq!(method.block.is_none(), true, "Method should not have been implemented.");
+}
+
+#[test]
+/// Construct a blank and unimplemented method.
+fn method_no_arg_return_i32_no_impl() {
+    let code = "met my_method() -> i32;";
+
+    let (_, method) = read_method(code).unwrap();
+
+    assert_eq!(method.name, "my_method", "Method had wrong name.");
+    assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");
+    assert_eq!(method.return_type, NLType::I32, "Wrong return type.");
+    assert_eq!(method.block.is_none(), true, "Method should not have been implemented.");
+}
+
+#[test]
+/// Construct a blank and unimplemented method.
+fn method_no_are_no_return_implemented() {
+    let code = "met my_method() {}";
+
+    let (_, method) = read_method(code).unwrap();
+
+    assert_eq!(method.name, "my_method", "Method had wrong name.");
+    assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");
+    assert_eq!(method.return_type, NLType::None, "Wrong return type.");
+    assert_eq!(method.block.is_none(), false, "Method should have been implemented.");
+}
+
+#[test]
+/// Construct a blank and unimplemented method.
+fn method_no_arg_return_i32_no_implemented() {
+    let code = "met my_method() -> i32 {}";
+
+    let (_, method) = read_method(code).unwrap();
+
+    assert_eq!(method.name, "my_method", "Method had wrong name.");
+    assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");
+    assert_eq!(method.return_type, NLType::I32, "Wrong return type.");
+    assert_eq!(method.block.is_none(), false, "Method should have been implemented.");
+}
