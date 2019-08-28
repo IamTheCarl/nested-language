@@ -31,8 +31,6 @@ mod test;
 
 pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
-const FILE_NAMING_CONVENTION_WARNING_MESSAGE: &str = "File name fails to meet conventions. Should be snake case and end in \".nl\".";
-
 pub struct CompileMessage {
     line: u32,
     column: u32,
@@ -105,14 +103,12 @@ pub struct NLFile {
     name: String,
     structs: Vec<NLStruct>,
     traits: Vec<NLTrait>,
-    warnings: Vec<CompileMessage>,
 }
 
 impl NLFile {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_structs(&self) -> &Vec<NLStruct> { &self.structs }
     pub fn get_traits(&self) -> &Vec<NLTrait> { &self.traits }
-    pub fn get_warnings(&self) -> &Vec<CompileMessage> { &self.warnings }
 }
 
 #[derive(Debug)]
@@ -297,7 +293,6 @@ fn parse_file_internal(input: &str) -> ParserResult<NLFile> {
         name: String::new(),
         structs: vec![],
         traits: vec![],
-        warnings: vec![],
     };
 
     let mut input = input;
@@ -375,14 +370,6 @@ pub fn parse_string(input: &str, file_name: &str) -> Result<NLFile, ParseError> 
         },
         Result::Ok(result) => {
             let (_, mut file) = result;
-
-            if !file_name.ends_with(".nl") || voca_rs::case::snake_case(file_name) != file_name {
-                file.warnings.push(CompileMessage {
-                    line: 0,
-                    column: 0,
-                    message: String::from(FILE_NAMING_CONVENTION_WARNING_MESSAGE),
-                })
-            }
 
             file.name = file_name.to_string();
 
