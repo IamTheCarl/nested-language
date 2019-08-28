@@ -181,7 +181,7 @@ fn struct_with_bad_root() {
 /// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
 fn struct_variable_access_rules() {
     let file_name = "tests/struct_variable_access_rules.nl";
-    let file = parse_file(&mut Path::new(file_name)).unwrap();
+    let file = parse_file(&mut Path::new(file_name)).unwrap();  
 
     assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
     let my_struct = &file.structs[0];

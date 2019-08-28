@@ -31,20 +31,6 @@ mod test;
 
 pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
-pub struct CompileMessage {
-    line: u32,
-    column: u32,
-    message: String,
-}
-
-impl CompileMessage {
-    pub fn get_location(&self) -> (u32, u32) {
-        (self.line, self.column)
-    }
-
-    pub fn get_message(&self) -> &str { &self.message }
-}
-
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum NLAccessRule {
     Hidden,
