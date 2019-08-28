@@ -224,12 +224,34 @@ mod nl_trait {
 mod nl_methods {
     use super::*;
 
+    fn pretty_read_method(input: &str) -> (&str, NLMethod) {
+        let result = read_method(input);
+        match result {
+            Ok(r) => r,
+            Err(e) => {
+                match e {
+                    nom::Err::Error(e) | nom::Err::Failure(e) => {
+                        let message = convert_error(input, e);
+
+                        // Makes our error messages more readable when running tests.
+                        #[cfg(test)]
+                        println!("{}", message);
+                        panic!(message);
+                    }
+                    nom::Err::Incomplete(_) => {
+                        panic!("Unexpected end of file.");
+                    }
+                }
+            }
+        }
+    }
+
     #[test]
     /// Construct a blank and unimplemented method.
     fn method_no_arg_no_return_no_impl() {
         let code = "met my_method();";
 
-        let (_, method) = read_method(code).unwrap();
+        let (_, method) = pretty_read_method(code);
 
         assert_eq!(method.name, "my_method", "Method had wrong name.");
         assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");
@@ -242,7 +264,7 @@ mod nl_methods {
     fn method_no_arg_return_i32_no_impl() {
         let code = "met my_method() -> i32;";
 
-        let (_, method) = read_method(code).unwrap();
+        let (_, method) = pretty_read_method(code);
 
         assert_eq!(method.name, "my_method", "Method had wrong name.");
         assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");
@@ -252,10 +274,10 @@ mod nl_methods {
 
     #[test]
     /// Construct a blank and unimplemented method.
-    fn method_no_are_no_return_implemented() {
+    fn method_no_arg_no_return_implemented() {
         let code = "met my_method() {}";
 
-        let (_, method) = read_method(code).unwrap();
+        let (_, method) = pretty_read_method(code);
 
         assert_eq!(method.name, "my_method", "Method had wrong name.");
         assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");
@@ -265,10 +287,10 @@ mod nl_methods {
 
     #[test]
     /// Construct a blank and unimplemented method.
-    fn method_no_arg_return_i32_no_implemented() {
+    fn method_no_arg_return_i32_implemented() {
         let code = "met my_method() -> i32 {}";
 
-        let (_, method) = read_method(code).unwrap();
+        let (_, method) = pretty_read_method(code);
 
         assert_eq!(method.name, "my_method", "Method had wrong name.");
         assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");

@@ -27,6 +27,9 @@ use nom::multi::many0;
 use nom::multi::many1;
 use nom::sequence::tuple;
 use nom::combinator::opt;
+use nom::character::complete::alphanumeric1;
+use nom::bytes::complete::take_while;
+use nom::character::is_alphanumeric;
 
 // All tests are kept in their own module.
 #[cfg(test)]
@@ -93,10 +96,6 @@ impl NLStruct {
     pub fn get_variables(&self) -> &Vec<NLStructVariable> { &self.variables }
     pub fn get_implementations(&self) -> &Vec<NLImplementation> { &self.implementations }
 }
-
-/*struct NLMethod {
-    name: String,
-}*/
 
 pub struct NLTrait {
     name: String,
@@ -172,12 +171,97 @@ fn is_name(c: char) -> bool {
     }
 }
 
-fn read_struct_or_trait_name(data: &str) -> ParserResult<&str> {
-    delimited(blank, take_while1(is_name), blank)(data)
+fn read_struct_or_trait_name(input: &str) -> ParserResult<&str> {
+    delimited(blank, alphanumeric1, blank)(input)
+}
+
+fn is_method_char(input: char) -> bool {
+    match input {
+        '_' => true,
+        _ => is_alphanumeric(input as u8)
+    }
+}
+
+fn read_method_name(input: &str) -> ParserResult<&str> {
+    delimited(blank, take_while1(is_method_char), blank)(input)
+}
+
+fn read_code_block(input: &str) -> ParserResult<NLBlock> {
+    // Filler function.
+
+    let (input, _) = char('{')(input)?;
+    let (input, _) = blank(input)?;
+    let (input, _) = char('}')(input)?;
+
+    Ok((input, NLBlock{}))
+}
+
+fn read_method_argument(input: &str) -> ParserResult<NLArgument> {
+    let (input, _) = blank(input)?;
+    let (input, name) = read_variable_name(input)?;
+    let (input, _) = blank(input)?;
+    let (input, _) = char(':')(input)?;
+    let (input, _) = blank(input)?;
+    let (input, nl_type) = read_variable_type(input)?;
+    let (input, _) = blank(input)?;
+
+    let arg = NLArgument {
+        name: String::from(name),
+        nl_type
+    };
+
+    Ok((input, arg))
+}
+
+fn read_method_argument_list(input: &str) -> ParserResult<Vec<NLArgument>> {
+    let (input, arg_input) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
+    let (arg_input, mut arguments) = many0(terminated(read_method_argument, char(',')))(arg_input)?;
+    let (arg_input, last_arg) = opt(terminated(read_method_argument, tuple((blank, char(')')))))(arg_input)?;
+    match last_arg {
+        Some(arg) => {
+            arguments.push(arg);
+        },
+        _ => {} // Do nothing if there was no argument.
+    }
+
+    Ok((input, arguments))
+}
+
+fn read_return_type(input: &str) -> ParserResult<NLType> {
+    let (input, _) = blank(input)?;
+    let (input, tagged) = opt(tag("->"))(input)?;
+
+    if tagged.is_some() {
+        let (input, _) = blank(input)?;
+        let (input, nl_type) = read_variable_type(input)?;
+        let (input, _) = blank(input)?;
+
+        Ok((input, nl_type))
+    } else {
+        Ok((input, NLType::None))
+    }
 }
 
 fn read_method(input: &str) -> ParserResult<NLMethod> {
-    unimplemented!()
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("met")(input)?;
+    let (input, _) = blank(input)?;
+    let (input, name) = read_method_name(input)?;
+    let (input, _) = blank(input)?;
+    let (input, args) = read_method_argument_list(input)?;
+    let (input, _) = blank(input)?;
+    let (input, return_type) = read_return_type(input)?;
+    let (input, _) = blank(input)?;
+    let (input, block) = opt(read_code_block)(input)?;
+
+    let method = NLMethod {
+        name: String::from(name),
+        arguments: args,
+        return_type,
+        block
+    };
+
+    Ok((input, method))
 }
 
 fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {
@@ -310,7 +394,7 @@ fn read_struct(input: &str) -> ParserResult<CoreDeceleration> {
     }
 
     let (input, _) = blank(input)?;
-    let (input, _) = char('}')(input)?; // This may have been consumed by the last line already, so optional.
+    let (input, _) = char('}')(input)?;
     let (input, implementations) = many0(read_implementation)(input)?;
 
     let nl_struct = NLStruct {
@@ -329,8 +413,7 @@ fn parse_file_internal(input: &str) -> ParserResult<NLFile> {
         traits: vec![],
     };
 
-    if !input.is_empty()
-    {
+    if !input.is_empty() {
         let (input, core_defs) = many1(alt((read_struct, read_trait)))(input)?;
 
         for core_def in core_defs {
