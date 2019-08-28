@@ -1,0 +1,7 @@
+
+struct MyStruct {
+
+}
+impl Self {
+
+}

@@ -197,3 +197,18 @@ fn struct_variable_access_rules() {
     check_access(&my_struct.variables[2], NLAccessRule::Immutable);
     check_access(&my_struct.variables[3], NLAccessRule::Mutable);
 }
+
+#[test]
+/// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
+fn struct_empty_self_implementation() {
+    let file_name = "tests/struct_with_empty_self_implementation.nl";
+    let file = parse_file(&mut Path::new(file_name)).unwrap();
+
+    assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
+    let my_struct = &file.structs[0];
+
+    assert_eq!(my_struct.implementations.len(), 1, "Wrong number of implementations.");
+    let implementation = &my_struct.implementations[0];
+
+    assert_eq!(implementation.name, "Self", "Implementation had wrong name.");
+}

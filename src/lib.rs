@@ -26,6 +26,7 @@ use nom::error::VerboseErrorKind;
 use nom::multi::many0;
 use nom::multi::many1;
 use nom::sequence::tuple;
+use nom::combinator::opt;
 
 // All tests are kept in their own module.
 #[cfg(test)]
@@ -66,12 +67,18 @@ impl NLStructVariable {
 pub struct NLStruct {
     name: String,
     variables: Vec<NLStructVariable>,
+    implementations: Vec<NLImplementation>,
 }
 
 impl NLStruct {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_variables(&self) -> &Vec<NLStructVariable> { &self.variables }
+    pub fn get_implementations(&self) -> &Vec<NLImplementation> { &self.implementations }
 }
+
+/*struct NLMethod {
+    name: String,
+}*/
 
 pub struct NLTrait {
     name: String,
@@ -226,6 +233,7 @@ fn read_struct_variable(input: &str) -> ParserResult<NLStructVariable> {
     let (input, _) = blank(input)?;
     let (input, vision) = read_visibility(input)?;
     let (input, name) = read_variable_name(input)?;
+
     let (input, _) = blank(input)?;
     let (input, _) = char(':')(input)?; // That : between the variable name and its type.
     let (input, _) = blank(input)?;
@@ -240,13 +248,22 @@ fn read_struct_variable(input: &str) -> ParserResult<NLStructVariable> {
     Ok((input, var))
 }
 
-/*fn read_implementation(input: &str) -> ParserResult<NLImplementation> {
+fn read_implementation(input: &str) -> ParserResult<NLImplementation> {
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("impl")(input)?;
+    let (input, name) = read_struct_or_trait_name(input)?;
+    let (input, _) = char('{')(input)?;
+    let (input, _) = blank(input)?;
 
+    let (input, _) = blank(input)?;
+    let (input, _) = char('}')(input)?;
+
+    let implementation = NLImplementation {
+        name: String::from(name)
+    };
+
+    Ok((input, implementation))
 }
-
-fn read_implementations<'a>(input: &'a str, new_struct: &mut NLStruct) -> ParserResult<'a, ()> {
-
-}*/
 
 fn read_struct(input: &str) -> ParserResult<CoreDeceleration> {
     let (input, _) = blank(input)?;
@@ -256,13 +273,28 @@ fn read_struct(input: &str) -> ParserResult<CoreDeceleration> {
     let (input, _) = blank(input)?;
     let (input, _) = char('{')(input)?;
     let (input, _) = blank(input)?;
-    let (input, variables) = many0(
-        terminated(read_struct_variable, tuple((blank, alt((char(','), char('}'))))))
+    let (input, mut variables) = many0(
+        terminated(read_struct_variable, tuple((blank, char(','))))
     )(input)?;
+    let (input, _) = blank(input)?;
+
+    // Need to read the last struct.
+    let (input, last_var) = opt(read_struct_variable)(input)?;
+    match last_var {
+        Some(var) => {
+            variables.push(var);
+        }
+        _ => {} // Do nothing if we didn't have a last one.
+    }
+
+    let (input, _) = blank(input)?;
+    let (input, _) = char('}')(input)?; // This may have been consumed by the last line already, so optional.
+    let (input, implementations) = many0(read_implementation)(input)?;
 
     let nl_struct = NLStruct {
         name: String::from(name),
-        variables
+        variables,
+        implementations
     };
 
     Ok((input, CoreDeceleration::Struct(nl_struct)))
