@@ -5,7 +5,6 @@ use nom::Err as NomErr;
 use nom::sequence::delimited;
 use nom::IResult;
 use nom::bytes::complete::take_while1;
-use nom::combinator::opt;
 use nom::bytes::complete::tag;
 use nom::character::complete::alphanumeric0;
 use nom::error::VerboseError;
@@ -24,6 +23,9 @@ use nom::combinator::value;
 use nom::character::complete::char;
 use nom::character::complete::alpha1;
 use nom::error::VerboseErrorKind;
+use nom::multi::many0;
+use nom::multi::many1;
+use nom::sequence::tuple;
 
 // All tests are kept in their own module.
 #[cfg(test)]
@@ -79,10 +81,17 @@ impl NLTrait {
     pub fn get_name(&self) -> &str { &self.name }
 }
 
+pub struct NLImplementation {
+    name: String,
+}
+
+impl NLImplementation {
+    pub fn get_name(&self) -> &str { &self.name }
+}
+
 enum CoreDeceleration {
     Struct(NLStruct),
     Trait(NLTrait),
-    Unknown,
 }
 
 pub struct NLFile {
@@ -143,6 +152,9 @@ fn read_struct_or_trait_name(data: &str) -> ParserResult<&str> {
 }
 
 fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("trait")(input)?;
+    let (input, _) = blank(input)?;
     let (input, name) = read_struct_or_trait_name(input)?;
 
     let new_trait = NLTrait {
@@ -209,7 +221,7 @@ fn read_variable_type(input: &str) -> ParserResult<NLType> {
     }
 }
 
-fn read_var_definition(input: &str) -> ParserResult<NLStructVariable> {
+fn read_struct_variable(input: &str) -> ParserResult<NLStructVariable> {
 
     let (input, _) = blank(input)?;
     let (input, vision) = read_visibility(input)?;
@@ -228,50 +240,32 @@ fn read_var_definition(input: &str) -> ParserResult<NLStructVariable> {
     Ok((input, var))
 }
 
-fn read_struct(input: &str) -> ParserResult<CoreDeceleration> {
-    let (input, name) = read_struct_or_trait_name(input)?;
+/*fn read_implementation(input: &str) -> ParserResult<NLImplementation> {
 
-    let mut new_struct = NLStruct {
+}
+
+fn read_implementations<'a>(input: &'a str, new_struct: &mut NLStruct) -> ParserResult<'a, ()> {
+
+}*/
+
+fn read_struct(input: &str) -> ParserResult<CoreDeceleration> {
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("struct")(input)?;
+    let (input, _) = blank(input)?;
+    let (input, name) = read_struct_or_trait_name(input)?;
+    let (input, _) = blank(input)?;
+    let (input, _) = char('{')(input)?;
+    let (input, _) = blank(input)?;
+    let (input, variables) = many0(
+        terminated(read_struct_variable, tuple((blank, alt((char(','), char('}'))))))
+    )(input)?;
+
+    let nl_struct = NLStruct {
         name: String::from(name),
-        variables: vec![]
+        variables
     };
 
-    let vars = &mut new_struct.variables;
-
-    let (input, _) = char('{')(input)?;
-    let mut input = input;
-
-    loop {
-        let (new_input, var_definition) = opt(read_var_definition)(input)?;
-        input = new_input;
-
-        match var_definition {
-            Some(new_variable) => {
-                vars.push(new_variable);
-                let (new_input, comma) = opt(char(','))(input)?;
-                input = new_input;
-                match comma {
-                    // We have a comma, so it is optional that we have another deceleration.
-                    Some(_) => {
-                        // Just go back to the top of the loop.
-                        continue;
-                    },
-                    None => {
-                        // No comma, we must end the loop.
-                        break;
-                    }
-                }
-            },
-            None => {
-                break;
-            }
-        }
-    }
-
-    let (input, _) = blank(input)?;
-    let (input, _) = char('}')(input)?;
-
-    Ok((input, CoreDeceleration::Struct(new_struct)))
+    Ok((input, CoreDeceleration::Struct(nl_struct)))
 }
 
 fn parse_file_internal(input: &str) -> ParserResult<NLFile> {
@@ -281,52 +275,25 @@ fn parse_file_internal(input: &str) -> ParserResult<NLFile> {
         traits: vec![],
     };
 
-    let mut input = input;
+    if !input.is_empty()
+    {
+        let (input, core_defs) = many1(alt((read_struct, read_trait)))(input)?;
 
-    loop {
-        let (new_input, core_decoder_tag) = opt(read_struct_or_trait_name)(input)?;
-        input = new_input;
-
-        match core_decoder_tag {
-            Some(core_decoder_tag) => {
-                let (new_input, core_def) = match core_decoder_tag {
-                    "struct" => {
-                        read_struct(input)?
-                    }
-                    "trait" => {
-                        read_trait(input)?
-                    },
-                    _ => {
-                        (input, CoreDeceleration::Unknown)
-                    }
-                };
-                input = new_input;
-
-                match core_def {
-                    CoreDeceleration::Struct(nl_struct) => {
-                        file.structs.push(nl_struct);
-                    },
-                    CoreDeceleration::Trait(nl_trait) => {
-                        file.traits.push(nl_trait);
-                    },
-                    CoreDeceleration::Unknown => {
-                        let vek = VerboseErrorKind::Context("root of file. Only traits and structs may be defined here.");
-
-                        let ve = VerboseError {
-                            errors: vec![(input, vek)]
-                        };
-
-                        return Err(NomErr::Failure(ve));
-                    }
+        for core_def in core_defs {
+            match core_def {
+                CoreDeceleration::Struct(nl_struct) => {
+                    file.structs.push(nl_struct);
+                },
+                CoreDeceleration::Trait(nl_trait) => {
+                    file.traits.push(nl_trait);
                 }
-            },
-            None => {
-                break;
             }
         }
-    }
 
-    Ok((input, file))
+        Ok((input, file))
+    } else {
+        Ok((input, file))
+    }
 }
 
 pub fn parse_string(input: &str, file_name: &str) -> Result<NLFile, ParseError> {
