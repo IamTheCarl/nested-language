@@ -1,3 +1,3 @@
 struct MyStruct {
-    mut variable: ImBadNews
+    variable: ImBadNews
 }

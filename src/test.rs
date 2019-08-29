@@ -167,27 +167,6 @@ mod nl_struct {
 
     #[test]
     /// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
-    fn struct_variable_access_rules() {
-        let file_name = "tests/struct_variable_access_rules.nl";
-        let file = parse_file(&mut Path::new(file_name)).unwrap();
-
-        assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
-        let my_struct = &file.structs[0];
-
-        assert_eq!(my_struct.variables.len(), 4);
-
-        fn check_access(var: &NLStructVariable, rule: NLAccessRule) {
-            assert_eq!(var.access, rule);
-        }
-
-        check_access(&my_struct.variables[0], NLAccessRule::Hidden);
-        check_access(&my_struct.variables[1], NLAccessRule::Hidden);
-        check_access(&my_struct.variables[2], NLAccessRule::Immutable);
-        check_access(&my_struct.variables[3], NLAccessRule::Mutable);
-    }
-
-    #[test]
-    /// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
     fn struct_empty_self_implementation() {
         let file_name = "tests/struct_with_empty_self_implementation.nl";
         let file = parse_file(&mut Path::new(file_name)).unwrap();

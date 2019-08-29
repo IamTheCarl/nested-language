@@ -21,7 +21,6 @@ use nom::bytes::complete::take_until;
 use nom::multi::many0_count;
 use nom::combinator::value;
 use nom::character::complete::char;
-use nom::character::complete::alpha1;
 use nom::error::VerboseErrorKind;
 use nom::multi::many0;
 use nom::multi::many1;
@@ -39,9 +38,8 @@ pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum NLAccessRule {
-    Hidden,
-    Immutable,
-    Mutable,
+    Internal,
+    External,
 }
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
@@ -60,13 +58,11 @@ pub enum NLType {
 pub struct NLStructVariable {
     name: String,
     my_type: NLType,
-    access: NLAccessRule,
 }
 
 impl NLStructVariable {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_type(&self) -> &NLType { &self.my_type }
-    pub fn get_access_rule(&self) -> &NLAccessRule { &self.access }
 }
 
 pub struct NLArgument {
@@ -295,21 +291,6 @@ fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {
     Ok((input, CoreDeceleration::Trait(new_trait)))
 }
 
-fn read_visibility(input: &str) -> ParserResult<NLAccessRule> {
-    let (input, _) = blank(input)?;
-    let (input, tag) = alpha1(input)?;
-    let (input, _) = blank(input)?;
-
-    match tag {
-
-        "hid" => Ok((input, NLAccessRule::Hidden)),
-        "imm" => Ok((input, NLAccessRule::Immutable)),
-        "mut" => Ok((input, NLAccessRule::Mutable)),
-
-        _ =>     Ok((input, NLAccessRule::Hidden)), // Hidden by default.
-    }
-}
-
 fn read_variable_name(input: &str) -> ParserResult<&str> {
     take_while1(is_name)(input)
 }
@@ -345,7 +326,6 @@ fn read_variable_type(input: &str) -> ParserResult<NLType> {
 fn read_struct_variable(input: &str) -> ParserResult<NLStructVariable> {
 
     let (input, _) = blank(input)?;
-    let (input, vision) = read_visibility(input)?;
     let (input, name) = read_variable_name(input)?;
 
     let (input, _) = blank(input)?;
@@ -356,7 +336,6 @@ fn read_struct_variable(input: &str) -> ParserResult<NLStructVariable> {
     let var = NLStructVariable {
         name: String::from(name),
         my_type: nl_type,
-        access: vision,
     };
 
     Ok((input, var))
