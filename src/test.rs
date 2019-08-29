@@ -30,7 +30,7 @@ fn empty_struct_and_trait() {
 }
 
 #[test]
-/// Compile a file with struct with a variable with an invalid type.
+/// Compile a file with an invalid token in its root.
 fn bad_root() {
     let file_name = "tests/bad_root.nl";
     let file = parse_file(&mut Path::new(file_name));
@@ -199,6 +199,22 @@ mod nl_struct {
         let implementation = &my_struct.implementations[0];
 
         assert_eq!(implementation.name, "Self", "Implementation had wrong name.");
+    }
+
+    #[test]
+    /// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
+    fn struct_self_implementation_with_methods() {
+        let file_name = "tests/struct_self_implementation_with_methods.nl";
+        let file = parse_file(&mut Path::new(file_name)).unwrap();
+
+        assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
+        let my_struct = &file.structs[0];
+
+        assert_eq!(my_struct.implementations.len(), 1, "Wrong number of implementations.");
+        let implementation = &my_struct.implementations[0];
+
+        assert_eq!(implementation.name, "Self", "Implementation had wrong name.");
+        assert_eq!(implementation.methods.len(), 4, "Wrong number of methods.");
     }
 }
 

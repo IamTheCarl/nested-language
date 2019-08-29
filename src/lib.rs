@@ -107,6 +107,7 @@ impl NLTrait {
 
 pub struct NLImplementation {
     name: String,
+    methods: Vec<NLMethod>,
 }
 
 impl NLImplementation {
@@ -216,7 +217,7 @@ fn read_method_argument(input: &str) -> ParserResult<NLArgument> {
 fn read_method_argument_list(input: &str) -> ParserResult<Vec<NLArgument>> {
     let (input, arg_input) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
     let (arg_input, mut arguments) = many0(terminated(read_method_argument, char(',')))(arg_input)?;
-    let (arg_input, last_arg) = opt(terminated(read_method_argument, tuple((blank, char(')')))))(arg_input)?;
+    let (_, last_arg) = opt(terminated(read_method_argument, tuple((blank, char(')')))))(arg_input)?;
     match last_arg {
         Some(arg) => {
             arguments.push(arg);
@@ -261,7 +262,14 @@ fn read_method(input: &str) -> ParserResult<NLMethod> {
         block
     };
 
-    Ok((input, method))
+    // No block, we expect a semicolon.
+    if method.block.is_none() {
+        let (input, _) = char(';')(input)?;
+
+        Ok((input, method))
+    } else {
+        Ok((input, method))
+    }
 }
 
 fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {
@@ -360,12 +368,13 @@ fn read_implementation(input: &str) -> ParserResult<NLImplementation> {
     let (input, name) = read_struct_or_trait_name(input)?;
     let (input, _) = char('{')(input)?;
     let (input, _) = blank(input)?;
-
+    let (input, methods) = many0(read_method)(input)?;
     let (input, _) = blank(input)?;
     let (input, _) = char('}')(input)?;
 
     let implementation = NLImplementation {
-        name: String::from(name)
+        name: String::from(name),
+        methods,
     };
 
     Ok((input, implementation))
