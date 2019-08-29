@@ -70,6 +70,11 @@ pub struct NLArgument {
     nl_type: NLType,
 }
 
+impl NLArgument {
+    pub fn get_name(&self) -> &str { &self.name }
+    pub fn get_type(&self) -> &NLType { &self.nl_type }
+}
+
 pub struct NLBlock {
 
 }
@@ -79,6 +84,13 @@ pub struct NLMethod {
     arguments: Vec<NLArgument>,
     return_type: NLType,
     block: Option<NLBlock>,
+}
+
+impl NLMethod {
+    pub fn get_name(&self) -> &str { &self.name }
+    pub fn get_arguments(&self) -> &Vec<NLArgument> { &self.arguments }
+    pub fn get_return_type(&self) -> &NLType { &self.return_type }
+    pub fn get_block(&self) -> &Option<NLBlock> { &self.block }
 }
 
 pub struct NLStruct {
@@ -108,6 +120,7 @@ pub struct NLImplementation {
 
 impl NLImplementation {
     pub fn get_name(&self) -> &str { &self.name }
+    pub fn get_methods(&self) -> &Vec<NLMethod> { &self.methods }
 }
 
 enum CoreDeceleration {
