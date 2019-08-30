@@ -406,6 +406,8 @@ fn read_setter(input: &str) -> ParserResult<NLImplementor> {
                 Ok((input, NLImplementor::Setter(setter)))
             },
             None => {
+                let (input, _) = char(';')(input)?;
+
                 let setter = NLSetter {
                     name: String::from(name),
                     args,

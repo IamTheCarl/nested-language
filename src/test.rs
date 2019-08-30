@@ -195,6 +195,22 @@ mod nl_struct {
         assert_eq!(implementation.name, "Self", "Implementation had wrong name.");
         assert_eq!(implementation.implementors.len(), 4, "Wrong number of methods.");
     }
+
+    #[test]
+    /// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
+    fn struct_self_implementation_with_methods_and_encapsulations() {
+        let file_name = "tests/struct_self_implementation_with_methods_and_encapsulations.nl";
+        let file = parse_file(&mut Path::new(file_name)).unwrap();
+
+        assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
+        let my_struct = &file.structs[0];
+
+        assert_eq!(my_struct.implementations.len(), 1, "Wrong number of implementations.");
+        let implementation = &my_struct.implementations[0];
+
+        assert_eq!(implementation.name, "Self", "Implementation had wrong name.");
+        assert_eq!(implementation.implementors.len(), 10, "Wrong number of methods.");
+    }
 }
 
 mod nl_trait {
