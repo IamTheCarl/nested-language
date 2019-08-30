@@ -123,8 +123,14 @@ impl NLGetter {
 
 pub struct NLSetter {
     name: String,
-    nl_type: NLType,
+    args: Vec<NLArgument>,
     block: NLEncapsulationBlock,
+}
+
+impl NLSetter {
+    pub fn get_name(&self) -> &str { &self.name }
+    pub fn get_arguments(&self) -> &Vec<NLArgument> { &self.args }
+    pub fn get_block(&self) -> &NLEncapsulationBlock { &self.block }
 }
 
 pub struct NLStruct {
@@ -260,7 +266,8 @@ fn read_method_argument(input: &str) -> ParserResult<NLArgument> {
 fn read_method_argument_list(input: &str) -> ParserResult<Vec<NLArgument>> {
     let (input, arg_input) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
     let (arg_input, mut arguments) = many0(terminated(read_method_argument, char(',')))(arg_input)?;
-    let (_, last_arg) = opt(terminated(read_method_argument, tuple((blank, char(')')))))(arg_input)?;
+
+    let (_, last_arg) = opt(terminated(read_method_argument, blank))(arg_input)?;
     match last_arg {
         Some(arg) => {
             arguments.push(arg);
@@ -320,7 +327,6 @@ fn read_getter(input: &str) -> ParserResult<NLImplementor> {
     let (input, _) = tag("get")(input)?;
     let (input, name) = read_method_name(input)?;
     let (input, _) = blank(input)?;
-    let (input, _) = blank(input)?;
     let (input, is_default) = opt(tuple((char(':'), blank, tag("default"), blank)))(input)?;
 
     if is_default.is_some() {
@@ -363,6 +369,50 @@ fn read_getter(input: &str) -> ParserResult<NLImplementor> {
                 };
 
                 Ok((input, NLImplementor::Getter(getter)))
+            }
+        }
+    }
+}
+
+fn read_setter(input: &str) -> ParserResult<NLImplementor> {
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("set")(input)?;
+    let (input, name) = read_method_name(input)?;
+    let (input, _) = blank(input)?;
+    let (input, is_default) = opt(tuple((char(':'), blank, tag("default"), blank, char(';'))))(input)?;
+
+    if is_default.is_some() {
+        let setter = NLSetter {
+            name: String::from(name),
+            args: vec![],
+            block: NLEncapsulationBlock::Default
+        };
+
+        Ok((input, NLImplementor::Setter(setter)))
+    } else  {
+
+        let (input, args) = read_method_argument_list(input)?;
+        let (input, _) = blank(input)?;
+        let (input, block) = opt(read_code_block)(input)?;
+
+        match block {
+            Some(block) => {
+                let setter = NLSetter {
+                    name: String::from(name),
+                    args,
+                    block: NLEncapsulationBlock::Some(block),
+                };
+
+                Ok((input, NLImplementor::Setter(setter)))
+            },
+            None => {
+                let setter = NLSetter {
+                    name: String::from(name),
+                    args,
+                    block: NLEncapsulationBlock::None,
+                };
+
+                Ok((input, NLImplementor::Setter(setter)))
             }
         }
     }
@@ -447,7 +497,7 @@ fn read_implementation(input: &str) -> ParserResult<NLImplementation> {
     let (input, name) = read_struct_or_trait_name(input)?;
     let (input, _) = char('{')(input)?;
     let (input, _) = blank(input)?;
-    let (input, methods) = many0(alt((read_method, read_getter)))(input)?;
+    let (input, methods) = many0(alt((read_method, read_getter, read_setter)))(input)?;
     let (input, _) = blank(input)?;
     let (input, _) = char('}')(input)?;
 

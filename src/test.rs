@@ -369,7 +369,85 @@ mod nl_getters {
         let (_, getter) = pretty_read_getter(code);
 
         assert_eq!(getter.name, "my_getter", "Getter did not have expected name.");
-        assert_eq!(getter.block, NLEncapsulationBlock::None, "Getter did not state use of default implementation.");
+        assert_eq!(getter.block, NLEncapsulationBlock::None, "Getter did not state use of no implementation.");
         assert_eq!(getter.nl_type, NLType::I32, "Getter did not have correct return type.");
+    }
+}
+
+mod nl_setters {
+    use super::*;
+
+    fn pretty_read_setter(input: &str) -> (&str, NLSetter) {
+        let result = read_setter(input);
+        match result {
+            Ok(tuple) => {
+                let (s, method) = tuple;
+                match method {
+                    NLImplementor::Setter(setter) => {
+                        (s, setter)
+                    },
+                    _ => {
+                        panic!("Did not get a setter.");
+                    }
+                }
+            },
+            Err(e) => {
+                match e {
+                    nom::Err::Error(e) | nom::Err::Failure(e) => {
+                        let message = convert_error(input, e);
+
+                        // Makes our error messages more readable when running tests.
+                        #[cfg(test)]
+                        println!("{}", message);
+                        panic!(message);
+                    }
+                    nom::Err::Incomplete(_) => {
+                        panic!("Unexpected end of file.");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    /// A simple test of the getter syntax.
+    fn setter_default_impl() {
+        let code = "set my_setter:default;";
+        let (_, setter) = pretty_read_setter(code);
+
+        assert_eq!(setter.name, "my_setter", "Setter did not have expected name.");
+        assert_eq!(setter.block, NLEncapsulationBlock::Default, "Setter did not state use of default implementation.");
+        assert_eq!(setter.args.len(), 0, "Setter did not have correct arguments.");
+    }
+
+    #[test]
+    /// A simple test of the getter syntax.
+    fn getter_impl() {
+        let code = "set my_setter(value: i32) {}";
+        let (_, setter) = pretty_read_setter(code);
+
+        assert_eq!(setter.name, "my_setter", "Getter did not have expected name.");
+        assert_ne!(setter.block, NLEncapsulationBlock::Default, "Setter did not state use of default implementation.");
+        assert_ne!(setter.block, NLEncapsulationBlock::None, "Setter did not state use of default implementation.");
+
+        assert_eq!(setter.args.len(), 1, "Setter did not have correct number of arguments.");
+        let arg = &setter.args[0];
+        assert_eq!(arg.name, "value", "Variable did not have expected name.");
+        assert_eq!(arg.nl_type, NLType::I32, "Variable did not have expected type.");
+    }
+
+    #[test]
+    /// A simple test of the getter syntax.
+    fn getter_no_impl() {
+        let code = "set my_setter(value: i32);";
+        let (_, setter) = pretty_read_setter(code);
+
+        assert_eq!(setter.name, "my_setter", "Setter did not have expected name.");
+        assert_eq!(setter.block, NLEncapsulationBlock::None, "Setter did not state use of no implementation.");
+
+        assert_eq!(setter.args.len(), 1, "Setter did not have correct number of arguments.");
+        let arg = &setter.args[0];
+        assert_eq!(arg.name, "value", "Variable did not have expected name.");
+        assert_eq!(arg.nl_type, NLType::I32, "Variable did not have expected type.");
     }
 }
