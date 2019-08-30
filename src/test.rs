@@ -193,7 +193,7 @@ mod nl_struct {
         let implementation = &my_struct.implementations[0];
 
         assert_eq!(implementation.name, "Self", "Implementation had wrong name.");
-        assert_eq!(implementation.methods.len(), 4, "Wrong number of methods.");
+        assert_eq!(implementation.implementors.len(), 4, "Wrong number of methods.");
     }
 }
 
@@ -222,7 +222,17 @@ mod nl_methods {
     fn pretty_read_method(input: &str) -> (&str, NLMethod) {
         let result = read_method(input);
         match result {
-            Ok(r) => r,
+            Ok(tuple) => {
+                let (s, method) = tuple;
+                match method {
+                    NLImplementor::Method(method) => {
+                        (s, method)
+                    },
+                    _ => {
+                        panic!("Did not get a method.");
+                    }
+                }
+            },
             Err(e) => {
                 match e {
                     nom::Err::Error(e) | nom::Err::Failure(e) => {
@@ -291,5 +301,75 @@ mod nl_methods {
         assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");
         assert_eq!(method.return_type, NLType::I32, "Wrong return type.");
         assert_eq!(method.block.is_none(), false, "Method should have been implemented.");
+    }
+}
+
+mod nl_getters {
+    use super::*;
+
+    fn pretty_read_getter(input: &str) -> (&str, NLGetter) {
+        let result = read_getter(input);
+        match result {
+            Ok(tuple) => {
+                let (s, method) = tuple;
+                match method {
+                    NLImplementor::Getter(getter) => {
+                        (s, getter)
+                    },
+                    _ => {
+                        panic!("Did not get a getter.");
+                    }
+                }
+            },
+            Err(e) => {
+                match e {
+                    nom::Err::Error(e) | nom::Err::Failure(e) => {
+                        let message = convert_error(input, e);
+
+                        // Makes our error messages more readable when running tests.
+                        #[cfg(test)]
+                        println!("{}", message);
+                        panic!(message);
+                    }
+                    nom::Err::Incomplete(_) => {
+                        panic!("Unexpected end of file.");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    /// A simple test of the getter syntax.
+    fn getter_default_impl() {
+        let code = "get my_getter:default -> i32;";
+        let (_, getter) = pretty_read_getter(code);
+
+        assert_eq!(getter.name, "my_getter", "Getter did not have expected name.");
+        assert_eq!(getter.block, NLEncapsulationBlock::Default, "Getter did not state use of default implementation.");
+        assert_eq!(getter.nl_type, NLType::I32, "Getter did not have correct return type.");
+    }
+
+    #[test]
+    /// A simple test of the getter syntax.
+    fn getter_impl() {
+        let code = "get my_getter(&self) -> i32 {}";
+        let (_, getter) = pretty_read_getter(code);
+
+        assert_eq!(getter.name, "my_getter", "Getter did not have expected name.");
+        assert_ne!(getter.block, NLEncapsulationBlock::Default, "Getter did not state use of default implementation.");
+        assert_ne!(getter.block, NLEncapsulationBlock::None, "Getter did not state use of default implementation.");
+        assert_eq!(getter.nl_type, NLType::I32, "Getter did not have correct return type.");
+    }
+
+    #[test]
+    /// A simple test of the getter syntax.
+    fn getter_no_impl() {
+        let code = "get my_getter(&self) -> i32;";
+        let (_, getter) = pretty_read_getter(code);
+
+        assert_eq!(getter.name, "my_getter", "Getter did not have expected name.");
+        assert_eq!(getter.block, NLEncapsulationBlock::None, "Getter did not state use of default implementation.");
+        assert_eq!(getter.nl_type, NLType::I32, "Getter did not have correct return type.");
     }
 }

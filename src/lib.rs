@@ -75,6 +75,7 @@ impl NLArgument {
     pub fn get_type(&self) -> &NLType { &self.nl_type }
 }
 
+#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub struct NLBlock {
 
 }
@@ -86,11 +87,44 @@ pub struct NLMethod {
     block: Option<NLBlock>,
 }
 
+pub enum NLImplementor {
+    Method(NLMethod),
+    Getter(NLGetter),
+    Setter(NLSetter),
+}
+
 impl NLMethod {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_arguments(&self) -> &Vec<NLArgument> { &self.arguments }
     pub fn get_return_type(&self) -> &NLType { &self.return_type }
     pub fn get_block(&self) -> &Option<NLBlock> { &self.block }
+}
+
+#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+pub enum NLEncapsulationBlock {
+    Some(NLBlock),
+    None,
+    Default,
+}
+
+pub struct NLGetter {
+    name: String,
+    args: Vec<NLArgument>,
+    nl_type: NLType,
+    block: NLEncapsulationBlock,
+}
+
+impl NLGetter {
+    pub fn get_name(&self) -> &str { &self.name }
+    pub fn get_arguments(&self) -> &Vec<NLArgument> { &self.args }
+    pub fn get_type(&self) -> &NLType { &self.nl_type }
+    pub fn get_block(&self) -> &NLEncapsulationBlock { &self.block }
+}
+
+pub struct NLSetter {
+    name: String,
+    nl_type: NLType,
+    block: NLEncapsulationBlock,
 }
 
 pub struct NLStruct {
@@ -115,12 +149,12 @@ impl NLTrait {
 
 pub struct NLImplementation {
     name: String,
-    methods: Vec<NLMethod>,
+    implementors: Vec<NLImplementor>,
 }
 
 impl NLImplementation {
     pub fn get_name(&self) -> &str { &self.name }
-    pub fn get_methods(&self) -> &Vec<NLMethod> { &self.methods }
+    pub fn get_implementors(&self) -> &Vec<NLImplementor> { &self.implementors }
 }
 
 enum CoreDeceleration {
@@ -252,7 +286,7 @@ fn read_return_type(input: &str) -> ParserResult<NLType> {
     }
 }
 
-fn read_method(input: &str) -> ParserResult<NLMethod> {
+fn read_method(input: &str) -> ParserResult<NLImplementor> {
     let (input, _) = blank(input)?;
     let (input, _) = tag("met")(input)?;
     let (input, _) = blank(input)?;
@@ -275,9 +309,62 @@ fn read_method(input: &str) -> ParserResult<NLMethod> {
     if method.block.is_none() {
         let (input, _) = char(';')(input)?;
 
-        Ok((input, method))
+        Ok((input, NLImplementor::Method(method)))
     } else {
-        Ok((input, method))
+        Ok((input, NLImplementor::Method(method)))
+    }
+}
+
+fn read_getter(input: &str) -> ParserResult<NLImplementor> {
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("get")(input)?;
+    let (input, name) = read_method_name(input)?;
+    let (input, _) = blank(input)?;
+    let (input, _) = blank(input)?;
+    let (input, is_default) = opt(tuple((char(':'), blank, tag("default"), blank)))(input)?;
+
+    if is_default.is_some() {
+        let (input, nl_type) = read_return_type(input)?;
+        let (input, _) = char(';')(input)?;
+
+        let getter = NLGetter {
+            name: String::from(name),
+            args: vec![],
+            nl_type,
+            block: NLEncapsulationBlock::Default,
+        };
+
+        Ok((input, NLImplementor::Getter(getter)))
+    } else {
+
+        let (input, args) = read_method_argument_list(input)?;
+        let (input, nl_type) = read_return_type(input)?;
+        let (input, block) = opt(read_code_block)(input)?;
+
+        match block {
+            Some(block) => {
+                let getter = NLGetter {
+                    name: String::from(name),
+                    args,
+                    nl_type,
+                    block: NLEncapsulationBlock::Some(block),
+                };
+
+                Ok((input, NLImplementor::Getter(getter)))
+            },
+            None => {
+                let (input, _) = char(';')(input)?;
+
+                let getter = NLGetter {
+                    name: String::from(name),
+                    args,
+                    nl_type,
+                    block: NLEncapsulationBlock::None,
+                };
+
+                Ok((input, NLImplementor::Getter(getter)))
+            }
+        }
     }
 }
 
@@ -360,13 +447,13 @@ fn read_implementation(input: &str) -> ParserResult<NLImplementation> {
     let (input, name) = read_struct_or_trait_name(input)?;
     let (input, _) = char('{')(input)?;
     let (input, _) = blank(input)?;
-    let (input, methods) = many0(read_method)(input)?;
+    let (input, methods) = many0(alt((read_method, read_getter)))(input)?;
     let (input, _) = blank(input)?;
     let (input, _) = char('}')(input)?;
 
     let implementation = NLImplementation {
         name: String::from(name),
-        methods,
+        implementors: methods,
     };
 
     Ok((input, implementation))
