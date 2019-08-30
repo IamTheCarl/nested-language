@@ -232,6 +232,200 @@ mod nl_trait {
     }
 }
 
+mod argument_list {
+    use super::*;
+
+    fn pretty_read(input: &str) -> Vec<NLArgument> {
+        let result = read_argument_decleration_list(input);
+        match result {
+            Ok(tuple) => {
+                let (_, args) = tuple;
+
+                args
+            },
+            Err(e) => {
+                match e {
+                    nom::Err::Error(e) | nom::Err::Failure(e) => {
+                        let message = convert_error(input, e);
+
+                        // Makes our error messages more readable when running tests.
+                        #[cfg(test)]
+                        println!("{}", message);
+                        panic!(message);
+                    }
+                    nom::Err::Incomplete(_) => {
+                        panic!("Unexpected end of file.");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn empty() {
+        let code = "()";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 0, "Wrong number of args.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn single_arg() {
+        let code = "(argA : i32)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 1, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "argA", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::I32, "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn two_args() {
+        let code = "(argA : i32, argB : i16)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 2, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "argA", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::I32, "Wrong argument type.");
+
+        let arg = &args[1];
+        assert_eq!(arg.name, "argB", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::I16, "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn three_args() {
+        let code = "(argA : i32, argB : i16, argC: i8)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 3, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "argA", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::I32, "Wrong argument type.");
+
+        let arg = &args[1];
+        assert_eq!(arg.name, "argB", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::I16, "Wrong argument type.");
+
+        let arg = &args[2];
+        assert_eq!(arg.name, "argC", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::I8, "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn self_reference_arg() {
+        let code = "(&self)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 1, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "self", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::SelfReference, "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn mutable_self_reference_arg() {
+        let code = "(&mut self)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 1, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "self", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::MutableSelfReference, "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn struct_reference() {
+        let code = "(var: &SomeStruct)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 1, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "var", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::ReferencedStruct(String::from("SomeStruct")), "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn mutable_struct_reference() {
+        let code = "(var: &mut SomeStruct)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 1, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "var", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::MutableReferencedStruct(String::from("SomeStruct")), "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn struct_owned() {
+        let code = "(var: SomeStruct)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 1, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "var", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::OwnedStruct(String::from("SomeStruct")), "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn trait_reference() {
+        let code = "(var: &dyn SomeTrait)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 1, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "var", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::ReferencedStruct(String::from("SomeTrait")), "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn mutable_trait_reference() {
+        let code = "(var: &mut dyn SomeTrait)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 1, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "var", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::MutableReferencedStruct(String::from("SomeTrait")), "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn trait_owned() {
+        let code = "(var: dyn SomeTrait)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 1, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "var", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::OwnedStruct(String::from("SomeTrait")), "Wrong argument type.");
+    }
+}
+
 mod nl_methods {
     use super::*;
 

@@ -50,9 +50,13 @@ pub enum NLType {
     U8, U16, U32, U64,
     Tuple(Vec<NLType>),
     OwnedStruct(String),
-    BorrowedStruct(String),
+    ReferencedStruct(String),
+    MutableReferencedStruct(String),
     OwnedTrait(String),
-    BorrowedTrait(String),
+    ReferencedTrait(String),
+    MutableReferencedTrait(String),
+    SelfReference,
+    MutableSelfReference,
 }
 
 pub struct NLStructVariable {
@@ -246,7 +250,7 @@ fn read_code_block(input: &str) -> ParserResult<NLBlock> {
     Ok((input, NLBlock{}))
 }
 
-fn read_method_argument(input: &str) -> ParserResult<NLArgument> {
+fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
     let (input, _) = blank(input)?;
     let (input, name) = read_variable_name(input)?;
     let (input, _) = blank(input)?;
@@ -263,11 +267,11 @@ fn read_method_argument(input: &str) -> ParserResult<NLArgument> {
     Ok((input, arg))
 }
 
-fn read_method_argument_list(input: &str) -> ParserResult<Vec<NLArgument>> {
+fn read_argument_decleration_list(input: &str) -> ParserResult<Vec<NLArgument>> {
     let (input, arg_input) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
-    let (arg_input, mut arguments) = many0(terminated(read_method_argument, char(',')))(arg_input)?;
+    let (arg_input, mut arguments) = many0(terminated(read_argument_declaration, char(',')))(arg_input)?;
 
-    let (_, last_arg) = opt(terminated(read_method_argument, blank))(arg_input)?;
+    let (_, last_arg) = opt(terminated(read_argument_declaration, blank))(arg_input)?;
     match last_arg {
         Some(arg) => {
             arguments.push(arg);
@@ -299,7 +303,7 @@ fn read_method(input: &str) -> ParserResult<NLImplementor> {
     let (input, _) = blank(input)?;
     let (input, name) = read_method_name(input)?;
     let (input, _) = blank(input)?;
-    let (input, args) = read_method_argument_list(input)?;
+    let (input, args) = read_argument_decleration_list(input)?;
     let (input, _) = blank(input)?;
     let (input, return_type) = read_return_type(input)?;
     let (input, _) = blank(input)?;
@@ -343,7 +347,7 @@ fn read_getter(input: &str) -> ParserResult<NLImplementor> {
         Ok((input, NLImplementor::Getter(getter)))
     } else {
 
-        let (input, args) = read_method_argument_list(input)?;
+        let (input, args) = read_argument_decleration_list(input)?;
         let (input, nl_type) = read_return_type(input)?;
         let (input, block) = opt(read_code_block)(input)?;
 
@@ -391,7 +395,7 @@ fn read_setter(input: &str) -> ParserResult<NLImplementor> {
         Ok((input, NLImplementor::Setter(setter)))
     } else  {
 
-        let (input, args) = read_method_argument_list(input)?;
+        let (input, args) = read_argument_decleration_list(input)?;
         let (input, _) = blank(input)?;
         let (input, block) = opt(read_code_block)(input)?;
 
