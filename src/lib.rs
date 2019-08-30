@@ -612,7 +612,7 @@ pub fn parse_string(input: &str, file_name: &str) -> Result<NLFile, ParseError> 
     }
 }
 
-pub fn parse_file(path: &Path) -> Result<NLFile, Box<dyn std::error::Error>> {
+pub fn parse_file<T>(path: &Path, function: &Fn(&NLFile) -> T) -> Result<T, Box<dyn std::error::Error>> {
     let mut input_file = File::open(&path)?;
 
     let mut contents = String::new();
@@ -623,7 +623,7 @@ pub fn parse_file(path: &Path) -> Result<NLFile, Box<dyn std::error::Error>> {
 
     match result {
         Ok(result) => {
-            Ok(result)
+            Ok(function(&result))
         },
         Err(error) => {
             Err(Box::new(error))
