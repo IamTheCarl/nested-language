@@ -344,6 +344,32 @@ mod argument_list {
 
     #[test]
     /// Testing the argument declaration reader.
+    fn self_reference_arg_odd_pre_space() {
+        let code = "(& self)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 1, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "self", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::SelfReference, "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
+    fn mutable_self_reference_arg_odd_pre_space() {
+        let code = "(& mut self)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 1, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "self", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::MutableSelfReference, "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
     fn struct_reference() {
         let code = "(var: &SomeStruct)";
         let args = pretty_read(code);

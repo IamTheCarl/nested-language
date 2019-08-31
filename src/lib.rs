@@ -270,30 +270,36 @@ fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
             Ok((input, arg))
         },
         None => {
-            let (post_input, tagged) = opt(tag("&self"))(input)?;
-            if tagged.is_some() {
-                let input = post_input;
-                let arg = NLArgument {
-                    name: "self",
-                    nl_type: NLType::SelfReference,
-                };
 
-                return Ok((input, arg));
-            }
+            let (post_input, is_ref) = opt(char('&'))(input)?;
+            let is_ref = is_ref.is_some();
 
-            let (post_input, tagged) = opt(tag("&mut"))(input)?;
-            if tagged.is_some() {
+            if is_ref {
                 let input = post_input;
 
                 let (input, _) = blank(input)?;
-                let (input, _) = tag("self")(input)?;
+                let (input, tagged) = opt(tag("self"))(input)?;
+                if tagged.is_some() {
+                    let arg = NLArgument {
+                        name: "self",
+                        nl_type: NLType::SelfReference,
+                    };
 
-                let arg = NLArgument {
-                    name: "self",
-                    nl_type: NLType::MutableSelfReference,
-                };
+                    return Ok((input, arg));
+                }
 
-                return Ok((input, arg));
+                let (input, tagged) = opt(tag("mut"))(input)?;
+                if tagged.is_some() {
+                    let (input, _) = blank(input)?;
+                    let (input, _) = tag("self")(input)?;
+
+                    let arg = NLArgument {
+                        name: "self",
+                        nl_type: NLType::MutableSelfReference,
+                    };
+
+                    return Ok((input, arg));
+                }
             }
 
             if !input.is_empty() {
