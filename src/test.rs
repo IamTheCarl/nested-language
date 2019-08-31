@@ -356,7 +356,7 @@ mod argument_list {
 
         let arg = &args[0];
         assert_eq!(arg.name, "var", "Wrong argument name.");
-        assert_eq!(arg.nl_type, NLType::ReferencedStruct(String::from("SomeStruct")), "Wrong argument type.");
+        assert_eq!(arg.nl_type, NLType::ReferencedStruct("SomeStruct"), "Wrong argument type.");
     }
 
     #[test]
@@ -369,7 +369,7 @@ mod argument_list {
 
         let arg = &args[0];
         assert_eq!(arg.name, "var", "Wrong argument name.");
-        assert_eq!(arg.nl_type, NLType::MutableReferencedStruct(String::from("SomeStruct")), "Wrong argument type.");
+        assert_eq!(arg.nl_type, NLType::MutableReferencedStruct("SomeStruct"), "Wrong argument type.");
     }
 
     #[test]
@@ -382,7 +382,7 @@ mod argument_list {
 
         let arg = &args[0];
         assert_eq!(arg.name, "var", "Wrong argument name.");
-        assert_eq!(arg.nl_type, NLType::OwnedStruct(String::from("SomeStruct")), "Wrong argument type.");
+        assert_eq!(arg.nl_type, NLType::OwnedStruct("SomeStruct"), "Wrong argument type.");
     }
 
     #[test]
@@ -395,7 +395,7 @@ mod argument_list {
 
         let arg = &args[0];
         assert_eq!(arg.name, "var", "Wrong argument name.");
-        assert_eq!(arg.nl_type, NLType::ReferencedStruct(String::from("SomeTrait")), "Wrong argument type.");
+        assert_eq!(arg.nl_type, NLType::ReferencedStruct("SomeTrait"), "Wrong argument type.");
     }
 
     #[test]
@@ -408,7 +408,7 @@ mod argument_list {
 
         let arg = &args[0];
         assert_eq!(arg.name, "var", "Wrong argument name.");
-        assert_eq!(arg.nl_type, NLType::MutableReferencedStruct(String::from("SomeTrait")), "Wrong argument type.");
+        assert_eq!(arg.nl_type, NLType::MutableReferencedStruct("SomeTrait"), "Wrong argument type.");
     }
 
     #[test]
@@ -421,7 +421,7 @@ mod argument_list {
 
         let arg = &args[0];
         assert_eq!(arg.name, "var", "Wrong argument name.");
-        assert_eq!(arg.nl_type, NLType::OwnedStruct(String::from("SomeTrait")), "Wrong argument type.");
+        assert_eq!(arg.nl_type, NLType::OwnedStruct("SomeTrait"), "Wrong argument type.");
     }
 }
 

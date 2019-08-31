@@ -43,38 +43,38 @@ pub enum NLAccessRule {
 }
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub enum NLType {
+pub enum NLType<'a> {
     None,
     Boolean,
     I8, I16, I32, I64,
     U8, U16, U32, U64,
-    Tuple(Vec<NLType>),
-    OwnedStruct(String),
-    ReferencedStruct(String),
-    MutableReferencedStruct(String),
-    OwnedTrait(String),
-    ReferencedTrait(String),
-    MutableReferencedTrait(String),
+    Tuple(Vec<NLType<'a>>),
+    OwnedStruct(&'a str),
+    ReferencedStruct(&'a str),
+    MutableReferencedStruct(&'a str),
+    OwnedTrait(&'a str),
+    ReferencedTrait(&'a str),
+    MutableReferencedTrait(&'a str),
     SelfReference,
     MutableSelfReference,
 }
 
-pub struct NLStructVariable {
-    name: String,
-    my_type: NLType,
+pub struct NLStructVariable<'a> {
+    name: &'a str,
+    my_type: NLType<'a>,
 }
 
-impl NLStructVariable {
+impl<'a> NLStructVariable<'a> {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_type(&self) -> &NLType { &self.my_type }
 }
 
-pub struct NLArgument {
-    name: String,
-    nl_type: NLType,
+pub struct NLArgument<'a> {
+    name: &'a str,
+    nl_type: NLType<'a>,
 }
 
-impl NLArgument {
+impl<'a> NLArgument<'a> {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_type(&self) -> &NLType { &self.nl_type }
 }
@@ -84,20 +84,20 @@ pub struct NLBlock {
 
 }
 
-pub struct NLMethod {
-    name: String,
-    arguments: Vec<NLArgument>,
-    return_type: NLType,
+pub struct NLMethod<'a> {
+    name: &'a str,
+    arguments: Vec<NLArgument<'a>>,
+    return_type: NLType<'a>,
     block: Option<NLBlock>,
 }
 
-pub enum NLImplementor {
-    Method(NLMethod),
-    Getter(NLGetter),
-    Setter(NLSetter),
+pub enum NLImplementor<'a> {
+    Method(NLMethod<'a>),
+    Getter(NLGetter<'a>),
+    Setter(NLSetter<'a>),
 }
 
-impl NLMethod {
+impl<'a> NLMethod<'a> {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_arguments(&self) -> &Vec<NLArgument> { &self.arguments }
     pub fn get_return_type(&self) -> &NLType { &self.return_type }
@@ -111,74 +111,74 @@ pub enum NLEncapsulationBlock {
     Default,
 }
 
-pub struct NLGetter {
+pub struct NLGetter<'a> {
     name: String,
-    args: Vec<NLArgument>,
-    nl_type: NLType,
+    args: Vec<NLArgument<'a>>,
+    nl_type: NLType<'a>,
     block: NLEncapsulationBlock,
 }
 
-impl NLGetter {
+impl<'a> NLGetter<'a> {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_arguments(&self) -> &Vec<NLArgument> { &self.args }
     pub fn get_type(&self) -> &NLType { &self.nl_type }
     pub fn get_block(&self) -> &NLEncapsulationBlock { &self.block }
 }
 
-pub struct NLSetter {
-    name: String,
-    args: Vec<NLArgument>,
+pub struct NLSetter<'a> {
+    name: &'a str,
+    args: Vec<NLArgument<'a>>,
     block: NLEncapsulationBlock,
 }
 
-impl NLSetter {
+impl<'a> NLSetter<'a> {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_arguments(&self) -> &Vec<NLArgument> { &self.args }
     pub fn get_block(&self) -> &NLEncapsulationBlock { &self.block }
 }
 
-pub struct NLStruct {
-    name: String,
-    variables: Vec<NLStructVariable>,
-    implementations: Vec<NLImplementation>,
+pub struct NLStruct<'a> {
+    name: &'a str,
+    variables: Vec<NLStructVariable<'a>>,
+    implementations: Vec<NLImplementation<'a>>,
 }
 
-impl NLStruct {
+impl<'a> NLStruct<'a> {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_variables(&self) -> &Vec<NLStructVariable> { &self.variables }
     pub fn get_implementations(&self) -> &Vec<NLImplementation> { &self.implementations }
 }
 
-pub struct NLTrait {
-    name: String,
+pub struct NLTrait<'a> {
+    name: &'a str,
 }
 
-impl NLTrait {
+impl<'a> NLTrait<'a> {
     pub fn get_name(&self) -> &str { &self.name }
 }
 
-pub struct NLImplementation {
-    name: String,
-    implementors: Vec<NLImplementor>,
+pub struct NLImplementation<'a> {
+    name: &'a str,
+    implementors: Vec<NLImplementor<'a>>,
 }
 
-impl NLImplementation {
+impl<'a> NLImplementation<'a> {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_implementors(&self) -> &Vec<NLImplementor> { &self.implementors }
 }
 
-enum CoreDeceleration {
-    Struct(NLStruct),
-    Trait(NLTrait),
+enum CoreDeceleration<'a> {
+    Struct(NLStruct<'a>),
+    Trait(NLTrait<'a>),
 }
 
-pub struct NLFile {
+pub struct NLFile<'a> {
     name: String,
-    structs: Vec<NLStruct>,
-    traits: Vec<NLTrait>,
+    structs: Vec<NLStruct<'a>>,
+    traits: Vec<NLTrait<'a>>,
 }
 
-impl NLFile {
+impl<'a> NLFile<'a> {
     pub fn get_name(&self) -> &str { &self.name }
     pub fn get_structs(&self) -> &Vec<NLStruct> { &self.structs }
     pub fn get_traits(&self) -> &Vec<NLTrait> { &self.traits }
@@ -260,7 +260,7 @@ fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
     let (input, _) = blank(input)?;
 
     let arg = NLArgument {
-        name: String::from(name),
+        name,
         nl_type
     };
 
@@ -310,7 +310,7 @@ fn read_method(input: &str) -> ParserResult<NLImplementor> {
     let (input, block) = opt(read_code_block)(input)?;
 
     let method = NLMethod {
-        name: String::from(name),
+        name,
         arguments: args,
         return_type,
         block
@@ -387,7 +387,7 @@ fn read_setter(input: &str) -> ParserResult<NLImplementor> {
 
     if is_default.is_some() {
         let setter = NLSetter {
-            name: String::from(name),
+            name,
             args: vec![],
             block: NLEncapsulationBlock::Default
         };
@@ -402,7 +402,7 @@ fn read_setter(input: &str) -> ParserResult<NLImplementor> {
         match block {
             Some(block) => {
                 let setter = NLSetter {
-                    name: String::from(name),
+                    name,
                     args,
                     block: NLEncapsulationBlock::Some(block),
                 };
@@ -413,7 +413,7 @@ fn read_setter(input: &str) -> ParserResult<NLImplementor> {
                 let (input, _) = char(';')(input)?;
 
                 let setter = NLSetter {
-                    name: String::from(name),
+                    name,
                     args,
                     block: NLEncapsulationBlock::None,
                 };
@@ -431,7 +431,7 @@ fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {
     let (input, name) = read_struct_or_trait_name(input)?;
 
     let new_trait = NLTrait {
-        name: String::from(name)
+        name
     };
 
     let (input, _) = char('{')(input)?;
@@ -490,7 +490,7 @@ fn read_struct_variable(input: &str) -> ParserResult<NLStructVariable> {
     let (input, nl_type) = read_variable_type(input)?;
 
     let var = NLStructVariable {
-        name: String::from(name),
+        name,
         my_type: nl_type,
     };
 
@@ -508,7 +508,7 @@ fn read_implementation(input: &str) -> ParserResult<NLImplementation> {
     let (input, _) = char('}')(input)?;
 
     let implementation = NLImplementation {
-        name: String::from(name),
+        name,
         implementors: methods,
     };
 
@@ -542,7 +542,7 @@ fn read_struct(input: &str) -> ParserResult<CoreDeceleration> {
     let (input, implementations) = many0(read_implementation)(input)?;
 
     let nl_struct = NLStruct {
-        name: String::from(name),
+        name,
         variables,
         implementations
     };
@@ -577,7 +577,7 @@ fn parse_file_internal(input: &str) -> ParserResult<NLFile> {
     }
 }
 
-pub fn parse_string(input: &str, file_name: &str) -> Result<NLFile, ParseError> {
+pub fn parse_string<'a>(input: &'a str, file_name: &str) -> Result<NLFile<'a>, ParseError> {
 
     let file = parse_file_internal(input);
 
