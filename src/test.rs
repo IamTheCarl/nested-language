@@ -547,12 +547,12 @@ mod nl_getters {
     #[test]
     /// A simple test of the getter syntax.
     fn getter_default_impl() {
-        let code = "get my_getter:default -> i32;";
+        let code = "get my_getter:default;";
         let (_, getter) = pretty_read_getter(code);
 
         assert_eq!(getter.name, "my_getter", "Getter did not have expected name.");
         assert_eq!(getter.block, NLEncapsulationBlock::Default, "Getter did not state use of default implementation.");
-        assert_eq!(getter.nl_type, NLType::I32, "Getter did not have correct return type.");
+        assert_eq!(getter.nl_type, NLType::None, "Getter did not have correct return type.");
     }
 
     #[test]

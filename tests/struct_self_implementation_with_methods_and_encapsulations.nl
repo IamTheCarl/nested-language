@@ -9,7 +9,7 @@ impl Self {
     met my_method() {}
     met my_method() -> i32 {}
 
-    get my_getter:default -> i32;
+    get my_getter:default;
     get my_getter(&self) -> i32 {}
     get my_getter(&self) -> i32;
 
