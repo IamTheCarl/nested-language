@@ -148,23 +148,6 @@ mod nl_struct {
     }
 
     #[test]
-    /// Compile a file with struct with a variable with an invalid type.
-    fn struct_with_bad_variable_type() {
-        let file_name = "tests/struct_with_single_variable_bad_type.nl";
-        let file = parse_file(&mut Path::new(file_name), &|_file: &NLFile| {});
-
-        match file {
-            Err(error) => {
-                // Everything is fine! ... in a way.
-                assert!(error.description().contains("unknown variable type"));
-            },
-            Ok(_) => {
-                panic!("No error when one was expected.");
-            }
-        }
-    }
-
-    #[test]
     /// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
     fn struct_empty_self_implementation() {
         let file_name = "tests/struct_with_empty_self_implementation.nl";
@@ -235,7 +218,7 @@ mod argument_list {
     use super::*;
 
     fn pretty_read(input: &str) -> Vec<NLArgument> {
-        let result = read_argument_decleration_list(input);
+        let result = read_argument_deceleration_list(input);
         match result {
             Ok(tuple) => {
                 let (_, args) = tuple;
@@ -348,6 +331,19 @@ mod argument_list {
 
     #[test]
     /// Testing the argument declaration reader.
+    fn mutable_self_reference_arg_odd_spacing() {
+        let code = "(&mut\tself)";
+        let args = pretty_read(code);
+
+        assert_eq!(args.len(), 1, "Wrong number of args.");
+
+        let arg = &args[0];
+        assert_eq!(arg.name, "self", "Wrong argument name.");
+        assert_eq!(arg.nl_type, NLType::MutableSelfReference, "Wrong argument type.");
+    }
+
+    #[test]
+    /// Testing the argument declaration reader.
     fn struct_reference() {
         let code = "(var: &SomeStruct)";
         let args = pretty_read(code);
@@ -395,7 +391,7 @@ mod argument_list {
 
         let arg = &args[0];
         assert_eq!(arg.name, "var", "Wrong argument name.");
-        assert_eq!(arg.nl_type, NLType::ReferencedStruct("SomeTrait"), "Wrong argument type.");
+        assert_eq!(arg.nl_type, NLType::ReferencedTrait("SomeTrait"), "Wrong argument type.");
     }
 
     #[test]
@@ -408,7 +404,7 @@ mod argument_list {
 
         let arg = &args[0];
         assert_eq!(arg.name, "var", "Wrong argument name.");
-        assert_eq!(arg.nl_type, NLType::MutableReferencedStruct("SomeTrait"), "Wrong argument type.");
+        assert_eq!(arg.nl_type, NLType::MutableReferencedTrait("SomeTrait"), "Wrong argument type.");
     }
 
     #[test]
@@ -421,7 +417,7 @@ mod argument_list {
 
         let arg = &args[0];
         assert_eq!(arg.name, "var", "Wrong argument name.");
-        assert_eq!(arg.nl_type, NLType::OwnedStruct("SomeTrait"), "Wrong argument type.");
+        assert_eq!(arg.nl_type, NLType::OwnedTrait("SomeTrait"), "Wrong argument type.");
     }
 }
 

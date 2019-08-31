@@ -252,22 +252,72 @@ fn read_code_block(input: &str) -> ParserResult<NLBlock> {
 
 fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
     let (input, _) = blank(input)?;
-    let (input, name) = read_variable_name(input)?;
-    let (input, _) = blank(input)?;
-    let (input, _) = char(':')(input)?;
-    let (input, _) = blank(input)?;
-    let (input, nl_type) = read_variable_type(input)?;
-    let (input, _) = blank(input)?;
+    let (input, name) = opt(read_variable_name)(input)?;
 
-    let arg = NLArgument {
-        name,
-        nl_type
-    };
+    match name {
+        Some(name) => {
+            let (input, _) = blank(input)?;
+            let (input, _) = char(':')(input)?;
+            let (input, _) = blank(input)?;
+            let (input, nl_type) = read_variable_type(input)?;
+            let (input, _) = blank(input)?;
 
-    Ok((input, arg))
+            let arg = NLArgument {
+                name,
+                nl_type
+            };
+
+            Ok((input, arg))
+        },
+        None => {
+            let (post_input, tagged) = opt(tag("&self"))(input)?;
+            if tagged.is_some() {
+                let input = post_input;
+                let arg = NLArgument {
+                    name: "self",
+                    nl_type: NLType::SelfReference,
+                };
+
+                return Ok((input, arg));
+            }
+
+            let (post_input, tagged) = opt(tag("&mut"))(input)?;
+            if tagged.is_some() {
+                let input = post_input;
+
+                let (input, _) = blank(input)?;
+                let (input, _) = tag("self")(input)?;
+
+                let arg = NLArgument {
+                    name: "self",
+                    nl_type: NLType::MutableSelfReference,
+                };
+
+                return Ok((input, arg));
+            }
+
+            if !input.is_empty() {
+                let vek = VerboseErrorKind::Context("could not read deceleration of argument correctly");
+
+                let ve = VerboseError {
+                    errors: vec![(input, vek)]
+                };
+
+                Err(NomErr::Failure(ve))
+            } else {
+                let vek = VerboseErrorKind::Context("there is no argument");
+
+                let ve = VerboseError {
+                    errors: vec![(input, vek)]
+                };
+
+                Err(NomErr::Error(ve))
+            }
+        },
+    }
 }
 
-fn read_argument_decleration_list(input: &str) -> ParserResult<Vec<NLArgument>> {
+fn read_argument_deceleration_list(input: &str) -> ParserResult<Vec<NLArgument>> {
     let (input, arg_input) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
     let (arg_input, mut arguments) = many0(terminated(read_argument_declaration, char(',')))(arg_input)?;
 
@@ -303,7 +353,7 @@ fn read_method(input: &str) -> ParserResult<NLImplementor> {
     let (input, _) = blank(input)?;
     let (input, name) = read_method_name(input)?;
     let (input, _) = blank(input)?;
-    let (input, args) = read_argument_decleration_list(input)?;
+    let (input, args) = read_argument_deceleration_list(input)?;
     let (input, _) = blank(input)?;
     let (input, return_type) = read_return_type(input)?;
     let (input, _) = blank(input)?;
@@ -347,7 +397,7 @@ fn read_getter(input: &str) -> ParserResult<NLImplementor> {
         Ok((input, NLImplementor::Getter(getter)))
     } else {
 
-        let (input, args) = read_argument_decleration_list(input)?;
+        let (input, args) = read_argument_deceleration_list(input)?;
         let (input, nl_type) = read_return_type(input)?;
         let (input, block) = opt(read_code_block)(input)?;
 
@@ -395,7 +445,7 @@ fn read_setter(input: &str) -> ParserResult<NLImplementor> {
         Ok((input, NLImplementor::Setter(setter)))
     } else  {
 
-        let (input, args) = read_argument_decleration_list(input)?;
+        let (input, args) = read_argument_deceleration_list(input)?;
         let (input, _) = blank(input)?;
         let (input, block) = opt(read_code_block)(input)?;
 
@@ -451,30 +501,73 @@ fn read_variable_name(input: &str) -> ParserResult<&str> {
     take_while1(is_name)(input)
 }
 
+fn identify_struct_or_trait_type(input: &str) -> ParserResult<NLType> {
+
+    let (input, is_reference) = opt(char('&'))(input)?;
+    let is_reference = is_reference.is_some();
+
+    let (input, _) = blank(input)?;
+
+    let (input, is_mutable) = if is_reference {
+        let (input, is_mutable) = opt(tag("mut"))(input)?;
+        let is_mutable = is_mutable.is_some();
+
+        let (input, _) = blank(input)?;
+
+        (input, is_mutable)
+    } else {
+        // If not a reference, this does not matter.
+        (input, false)
+    };
+
+    let (input, is_struct) = opt(tag("dyn"))(input)?;
+    let is_struct = is_struct.is_none();
+
+    let (input, name) = read_struct_or_trait_name(input)?;
+
+    if is_struct {
+        // Its a struct.
+        if is_reference {
+            if is_mutable {
+                Ok((input, NLType::MutableReferencedStruct(name)))
+            } else {
+                Ok((input, NLType::ReferencedStruct(name)))
+            }
+        } else {
+            Ok((input, NLType::OwnedStruct(name)))
+        }
+    } else {
+        // Its a trait.
+        if is_reference {
+            if is_mutable {
+                Ok((input, NLType::MutableReferencedTrait(name)))
+            } else {
+                Ok((input, NLType::ReferencedTrait(name)))
+            }
+        } else {
+            Ok((input, NLType::OwnedTrait(name)))
+        }
+    }
+}
+
 fn read_variable_type(input: &str) -> ParserResult<NLType> {
     // let (input, type_name) = take!(input, 5 )?;
-    let (input, type_name) = alphanumeric0(input)?;
+    let (input_new, type_name) = alphanumeric0(input)?;
 
     // TODO figure out how to differentiate traits and structs.
     match type_name {
-        "i8"   => Ok((input, NLType::I8)),
-        "i16"  => Ok((input, NLType::I16)),
-        "i32"  => Ok((input, NLType::I32)),
-        "i64"  => Ok((input, NLType::I64)),
-        "u8"   => Ok((input, NLType::U8)),
-        "u16"  => Ok((input, NLType::U16)),
-        "u32"  => Ok((input, NLType::U32)),
-        "u64"  => Ok((input, NLType::U64)),
-        "bool" => Ok((input, NLType::Boolean)),
+        "i8"   => Ok((input_new, NLType::I8)),
+        "i16"  => Ok((input_new, NLType::I16)),
+        "i32"  => Ok((input_new, NLType::I32)),
+        "i64"  => Ok((input_new, NLType::I64)),
+        "u8"   => Ok((input_new, NLType::U8)),
+        "u16"  => Ok((input_new, NLType::U16)),
+        "u32"  => Ok((input_new, NLType::U32)),
+        "u64"  => Ok((input_new, NLType::U64)),
+        "bool" => Ok((input_new, NLType::Boolean)),
         _ => {
-
-            let vek = VerboseErrorKind::Context("unknown variable type");
-
-            let ve = VerboseError {
-                errors: vec![(input, vek)]
-            };
-
-            Err(NomErr::Failure(ve))
+            // Okay so we ether have Struct or Trait. Could even be a reference.
+            return identify_struct_or_trait_type(input)
         }
     }
 }
