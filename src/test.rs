@@ -212,6 +212,19 @@ mod nl_trait {
             assert_eq!(file.structs.len(), 0, "Wrong number of structs.");
         }).unwrap();
     }
+
+    #[test]
+    /// Tests a struct with encapsulators.
+    fn trait_with_methods_and_encapsulators() {
+        let file_name = "tests/trait_with_methods_and_encapsulators.nl";
+        parse_file(&mut Path::new(file_name), &|file: &NLFile| {
+            assert_eq!(file.traits.len(), 1, "Wrong number of traits.");
+            let my_trait = &file.traits[0];
+
+            assert_eq!(my_trait.name, "MyTrait", "Implementation had wrong name.");
+            assert_eq!(my_trait.implementors.len(), 10, "Wrong number of methods.");
+        }).unwrap();
+    }
 }
 
 mod argument_list {

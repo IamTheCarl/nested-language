@@ -151,10 +151,12 @@ impl<'a> NLStruct<'a> {
 
 pub struct NLTrait<'a> {
     name: &'a str,
+    implementors: Vec<NLImplementor<'a>>,
 }
 
 impl<'a> NLTrait<'a> {
     pub fn get_name(&self) -> &str { &self.name }
+    pub fn get_implementors(&self) -> &Vec<NLImplementor> { &self.implementors }
 }
 
 pub struct NLImplementation<'a> {
@@ -486,19 +488,19 @@ fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {
     let (input, _) = blank(input)?;
     let (input, name) = read_struct_or_trait_name(input)?;
 
-    let new_trait = NLTrait {
-        name
-    };
-
+    let (input, _) = blank(input)?;
     let (input, _) = char('{')(input)?;
+    let (input, _) = blank(input)?;
+
+    let (input, implementors) = many0(alt((read_method, read_getter, read_setter)))(input)?;
+
+    let (input, _) = blank(input)?;
     let (input, _) = char('}')(input)?;
 
-    /*do_parse!(input,
-        char!("{") //>>
-        //exprs: many0!(terminated((read_name), char!(';'))) >>
-        char!("}") >>
-        ()
-    );*/
+    let new_trait = NLTrait {
+        name,
+        implementors
+    };
 
     Ok((input, CoreDeceleration::Trait(new_trait)))
 }
