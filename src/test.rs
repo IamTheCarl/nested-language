@@ -842,5 +842,26 @@ mod executable_blocks {
                 _ => panic!("Expected assignment operation."),
             };
         }
+
+        #[test]
+        fn single_variable_to_constant_with_type_spec() {
+            let code = "let five: i32 = 5;";
+            let (_, operation) = read_assignment(code).unwrap();
+
+            match operation {
+                NLOperation::Assign(assign) => {
+                    assert_eq!(assign.is_new, true, "Assignment should have been  new.");
+                    assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
+                    assert_eq!(assign.type_assignment, NLType::I32, "Unexpected type specified.");
+
+                    let variable = &assign.to_assign[0];
+
+                    assert_eq!(variable.name, "five", "Wrong name given to variable.");
+
+
+                },
+                _ => panic!("Expected assignment operation."),
+            };
+        }
     }
 }

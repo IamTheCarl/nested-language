@@ -767,7 +767,7 @@ fn identify_struct_or_trait_type(input: &str) -> ParserResult<NLType> {
 }
 
 fn read_variable_type(input: &str) -> ParserResult<NLType> {
-    // let (input, type_name) = take!(input, 5 )?;
+    let (input, _) = blank(input)?;
     let (input_new, type_name) = alphanumeric0(input)?;
 
     // TODO figure out how to differentiate traits and structs.
