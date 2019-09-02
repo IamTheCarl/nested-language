@@ -819,6 +819,68 @@ mod executable_blocks {
         }
     }
 
+    mod tuples {
+        use super::*;
+
+        #[test]
+        fn tuple_empty() {
+            let code = "()";
+            let (_, tuple) = read_tuple_operation(code).unwrap();
+
+            match tuple {
+                NLOperation::Tuple(tuple) => {
+                    assert_eq!(tuple.len(), 0, "Wrong number of items in tuple.");
+                },
+                _ => panic!("Expected none."),
+            }
+        }
+
+        #[test]
+        fn tuple_one_item() {
+            let code = "(1)";
+            let (_, tuple) = read_tuple_operation(code).unwrap();
+
+            match tuple {
+                NLOperation::Tuple(tuple) => {
+                    assert_eq!(tuple.len(), 1, "Wrong number of items in tuple.");
+                    assert_eq!(tuple[0], NLOperation::Constant(OpConstant::Integer(1, NLType::None)), "Wrong value used for first value.");
+                },
+                _ => panic!("Expected none."),
+            }
+        }
+
+        #[test]
+        fn tuple_two_items() {
+            let code = "(1, 2)";
+            let (_, tuple) = read_tuple_operation(code).unwrap();
+
+            match tuple {
+                NLOperation::Tuple(tuple) => {
+                    assert_eq!(tuple.len(), 2, "Wrong number of items in tuple.");
+                    assert_eq!(tuple[0], NLOperation::Constant(OpConstant::Integer(1, NLType::None)), "Wrong value used for first value.");
+                    assert_eq!(tuple[1], NLOperation::Constant(OpConstant::Integer(2, NLType::None)), "Wrong value used for second value.");
+                },
+                _ => panic!("Expected none."),
+            }
+        }
+
+        #[test]
+        fn tuple_three_items() {
+            let code = "(1, 2, 3)";
+            let (_, tuple) = read_tuple_operation(code).unwrap();
+
+            match tuple {
+                NLOperation::Tuple(tuple) => {
+                    assert_eq!(tuple.len(), 3, "Wrong number of items in tuple.");
+                    assert_eq!(tuple[0], NLOperation::Constant(OpConstant::Integer(1, NLType::None)), "Wrong value used for first value.");
+                    assert_eq!(tuple[1], NLOperation::Constant(OpConstant::Integer(2, NLType::None)), "Wrong value used for second value.");
+                    assert_eq!(tuple[2], NLOperation::Constant(OpConstant::Integer(3, NLType::None)), "Wrong value used for third value.");
+                },
+                _ => panic!("Expected none."),
+            }
+        }
+    }
+
     mod assignment {
         use super::*;
 
@@ -856,6 +918,29 @@ mod executable_blocks {
 
                     let variable = &assign.to_assign[0];
 
+                    assert_eq!(variable.name, "five", "Wrong name given to variable.");
+
+
+                },
+                _ => panic!("Expected assignment operation."),
+            };
+        }
+
+        #[test]
+        fn assign_tuple() {
+            let code = "let (fore, five) = (4, 5);";
+            let (_, operation) = read_assignment(code).unwrap();
+
+            match operation {
+                NLOperation::Assign(assign) => {
+                    assert_eq!(assign.is_new, true, "Assignment should have been  new.");
+                    assert_eq!(assign.to_assign.len(), 2, "Wrong number of values being assigned.");
+                    assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
+
+                    let variable = &assign.to_assign[0];
+                    assert_eq!(variable.name, "fore", "Wrong name given to variable.");
+
+                    let variable = &assign.to_assign[1];
                     assert_eq!(variable.name, "five", "Wrong name given to variable.");
 
 

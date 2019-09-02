@@ -202,6 +202,7 @@ enum NLOperation<'a> {
     Block(NLBlock<'a>),
     Constant(OpConstant<'a>),
     Assign(OpAssignment<'a>),
+    Tuple(Vec<NLOperation<'a>>)
 }
 
 
@@ -273,9 +274,10 @@ fn read_method_name(input: &str) -> ParserResult<&str> {
     delimited(blank, take_while1(is_method_char), blank)(input)
 }
 
-fn read_tuple(input: &str) -> ParserResult<Vec<&str>> {
+fn read_tuple_of_variable_names(input: &str) -> ParserResult<Vec<&str>> {
     let (input, tuple_str) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
-    let (tuple_str, mut variables) = many0(terminated(read_variable_name, char(',')))(tuple_str)?;
+
+    let (tuple_str, mut variables) = many0(terminated(read_variable_name, tuple((blank, char(','), blank))))(tuple_str)?;
 
     let (_, last_var) = opt(terminated(read_variable_name, blank))(tuple_str)?;
     match last_var {
@@ -286,6 +288,28 @@ fn read_tuple(input: &str) -> ParserResult<Vec<&str>> {
     }
 
     Ok((input, variables))
+}
+
+fn read_tuple_operation(input: &str) -> ParserResult<NLOperation> {
+    let (input, _) = blank(input)?;
+    let (input, tuple_str) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
+
+    let (tuple_str, mut tuple) = many0(terminated(read_operation, tuple((blank, char(','), blank))))(tuple_str)?;
+
+    let (_, last_item) = opt(terminated(read_operation, blank))(tuple_str)?;
+    match last_item {
+        Some(item) => {
+            tuple.push(item);
+        },
+        _ => {} // Do nothing if there was no argument.
+    }
+
+    Ok((input, NLOperation::Tuple(tuple)))
+}
+
+fn read_single_variable(input: &str) -> ParserResult<Vec<&str>> {
+    let (input, name) = read_variable_name(input)?;
+    Ok((input, vec![name]))
 }
 
 fn read_boolean_constant(input: &str) -> ParserResult<OpConstant> {
@@ -377,10 +401,17 @@ fn read_assignment(input: &str) -> ParserResult<NLOperation> {
 
     // What is our name?
     let (input, _) = blank(input)?;
-    let (input, name) = read_variable_name(input)?; // TODO make this work with  a tuple.
-    let var = OpVariable {
-        name,
-    };
+    let (input, names) = alt((read_tuple_of_variable_names, read_single_variable))(input)?;
+
+    let mut variables = Vec::new();
+    variables.reserve(names.len());
+
+    for name in names {
+        let variable = OpVariable {
+            name,
+        };
+        variables.push(variable);
+    }
 
     // Are we given a type specification?
     let (input, _) = blank(input)?;
@@ -403,7 +434,7 @@ fn read_assignment(input: &str) -> ParserResult<NLOperation> {
 
     let assignment = OpAssignment {
         is_new,
-        to_assign: vec![var],
+        to_assign: variables,
         type_assignment,
         assignment: Box::new(assignment),
     };
@@ -428,7 +459,7 @@ fn read_code_block(input: &str) -> ParserResult<NLOperation> {
 }
 
 fn read_operation(input: &str) -> ParserResult<NLOperation> {
-    alt((read_code_block, read_assignment, read_constant))(input)
+    alt((read_code_block, read_tuple_operation, read_assignment, read_constant))(input)
 }
 
 fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
