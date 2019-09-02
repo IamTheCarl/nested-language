@@ -187,7 +187,6 @@ enum OpConstant<'a> {
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
 struct OpVariable<'a> {
     name: &'a str,
-    nl_type: NLType<'a>,
 }
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
@@ -378,9 +377,12 @@ fn read_assignment(input: &str) -> ParserResult<NLOperation> {
 
     // What is our name?
     let (input, _) = blank(input)?;
-    let (input, name) = read_variable_name(input)?;
+    let (input, name) = read_variable_name(input)?; // TODO make this work with  a tuple.
+    let var = OpVariable {
+        name,
+    };
 
-    // Are we given a type or do we need to figure this out?
+    // Are we given a type specification?
     let (input, _) = blank(input)?;
     let (input, has_type_assignment) = opt(char(':'))(input)?;
     let has_type_assignment = has_type_assignment.is_some();
@@ -390,13 +392,18 @@ fn read_assignment(input: &str) -> ParserResult<NLOperation> {
         read_variable_type(input)?
     };
 
-    // What's the value we are assigning to? Could be a single operation, could be a block, could be anything.
+    // Consume equal sign.
+    let (input, _) = blank(input)?;
+    let (input, _) = char('=')(input)?;
+    let (input, _) = blank(input)?;
+
+    // What's the value we are assigning to?
     let (input, _) = blank(input)?;
     let (input, assignment) = read_operation(input)?;
 
     let assignment = OpAssignment {
         is_new,
-        to_assign: vec![],
+        to_assign: vec![var],
         type_assignment,
         assignment: Box::new(assignment),
     };

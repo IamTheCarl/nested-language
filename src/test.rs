@@ -823,7 +823,7 @@ mod executable_blocks {
         use super::*;
 
         #[test]
-        fn single_variable_to_constant() { // TODO test is not fully written yet.
+        fn single_variable_to_constant() {
             let code = "let five = 5;";
             let (_, operation) = read_assignment(code).unwrap();
 
@@ -831,10 +831,10 @@ mod executable_blocks {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
                     assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
+                    assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
 
                     let variable = &assign.to_assign[0];
 
-                    assert_eq!(variable.nl_type, NLType::None, "Unexpected type specified.");
                     assert_eq!(variable.name, "five", "Wrong name given to variable.");
 
 
