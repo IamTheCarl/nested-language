@@ -29,6 +29,7 @@ use nom::combinator::opt;
 use nom::character::complete::alphanumeric1;
 use nom::bytes::complete::take_while;
 use nom::character::is_alphanumeric;
+use nom::character::complete::alpha1;
 
 // All tests are kept in their own module.
 #[cfg(test)]
@@ -42,6 +43,7 @@ pub enum NLAccessRule {
     External,
 }
 
+// TODO add string here.
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub enum NLType<'a> {
     None,
@@ -80,15 +82,15 @@ impl<'a> NLArgument<'a> {
 }
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub struct NLBlock {
-
+pub struct NLBlock<'a> {
+    operations: Vec<NLOperation<'a>>,
 }
 
 pub struct NLMethod<'a> {
     name: &'a str,
     arguments: Vec<NLArgument<'a>>,
     return_type: NLType<'a>,
-    block: Option<NLBlock>,
+    block: Option<NLBlock<'a>>,
 }
 
 pub enum NLImplementor<'a> {
@@ -105,8 +107,8 @@ impl<'a> NLMethod<'a> {
 }
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub enum NLEncapsulationBlock {
-    Some(NLBlock),
+pub enum NLEncapsulationBlock<'a> {
+    Some(NLBlock<'a>),
     None,
     Default,
 }
@@ -115,7 +117,7 @@ pub struct NLGetter<'a> {
     name: String,
     args: Vec<NLArgument<'a>>,
     nl_type: NLType<'a>,
-    block: NLEncapsulationBlock,
+    block: NLEncapsulationBlock<'a>,
 }
 
 impl<'a> NLGetter<'a> {
@@ -128,7 +130,7 @@ impl<'a> NLGetter<'a> {
 pub struct NLSetter<'a> {
     name: &'a str,
     args: Vec<NLArgument<'a>>,
-    block: NLEncapsulationBlock,
+    block: NLEncapsulationBlock<'a>,
 }
 
 impl<'a> NLSetter<'a> {
@@ -173,6 +175,36 @@ enum CoreDeceleration<'a> {
     Struct(NLStruct<'a>),
     Trait(NLTrait<'a>),
 }
+
+#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+enum OpConstant<'a> {
+    Boolean(bool),
+    Integer(i128, NLType<'a>),
+
+    String(&'a str), // TODO not implemented yet.
+}
+
+#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+struct OpVariable<'a> {
+    name: &'a str,
+    nl_type: NLType<'a>,
+}
+
+#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+struct OpAssignment<'a> {
+    is_new: bool,
+    to_assign: Vec<OpVariable<'a>>,
+    type_assignment: NLType<'a>,
+    assignment: Box<NLOperation<'a>>,
+}
+
+#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+enum NLOperation<'a> {
+    Block(NLBlock<'a>),
+    Constant(OpConstant<'a>),
+    Assign(OpAssignment<'a>),
+}
+
 
 pub struct NLFile<'a> {
     name: String,
@@ -242,14 +274,154 @@ fn read_method_name(input: &str) -> ParserResult<&str> {
     delimited(blank, take_while1(is_method_char), blank)(input)
 }
 
-fn read_code_block(input: &str) -> ParserResult<NLBlock> {
+fn read_tuple(input: &str) -> ParserResult<Vec<&str>> {
+    let (input, tuple_str) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
+    let (tuple_str, mut variables) = many0(terminated(read_variable_name, char(',')))(tuple_str)?;
+
+    let (_, last_var) = opt(terminated(read_variable_name, blank))(tuple_str)?;
+    match last_var {
+        Some(var) => {
+            variables.push(var);
+        },
+        _ => {} // Do nothing if there was no argument.
+    }
+
+    Ok((input, variables))
+}
+
+fn read_boolean_constant(input: &str) -> ParserResult<OpConstant> {
+    let (input, value) = alpha1(input)?;
+    match value {
+        "true" => Ok((input, OpConstant::Boolean(true))),
+        "false" => Ok((input, OpConstant::Boolean(false))),
+        _ => {
+            let vek = VerboseErrorKind::Context("boolean must be true or false");
+
+            let ve = VerboseError {
+                errors: vec![(input, vek)]
+            };
+
+            Err(NomErr::Error(ve))
+        },
+    }
+}
+
+fn read_cast(input: &str) -> ParserResult<NLType> {
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("as")(input)?;
+    let (input, _) = blank(input)?;
+
+    read_variable_type(input)
+}
+
+fn is_number(c: char) -> bool {
+    match c {
+        '.' => true,
+        '-' => true,
+        _ => c >= '0' && c <= '9'
+    }
+}
+
+fn parse_integer<T>(input: &str) -> ParserResult<T>
+    where T: std::str::FromStr {
+    let value = input.parse::<T>();
+    match value {
+        Ok(value) => {
+            // Its a valid integer.
+            Ok((input, value))
+        },
+        _ => {
+            let vek = VerboseErrorKind::Context("parse constant integer");
+
+            let ve = VerboseError {
+                errors: vec![(input, vek)]
+            };
+
+            Err(NomErr::Error(ve))
+        }
+    }
+}
+
+fn read_constant_integer(input: &str) -> ParserResult<OpConstant> {
+    let (input, number) = terminated(take_while1(is_number), blank)(input)?;
+    let (input, cast) = opt(read_cast)(input)?;
+
+    if !number.contains(".") {
+        let cast = match cast {
+            Some(cast) => cast,
+            None => NLType::None,
+        };
+
+        // Start with the biggest value possible. Then figure out which range it fits in.
+        let (_, value) = parse_integer::<i128>(number)?;
+        Ok((input, OpConstant::Integer(value, cast)))
+    } else {
+        // Has to be a floating point number.
+        unimplemented!()
+    }
+}
+
+fn read_constant(input: &str) -> ParserResult<NLOperation> {
+    let (input, constant) = alt((read_boolean_constant, read_constant_integer))(input)?;
+
+
+
+    Ok((input, NLOperation::Constant(constant)))
+}
+
+fn read_assignment(input: &str) -> ParserResult<NLOperation> {
+
+    // Are we defining?
+    let (input, _) = blank(input)?;
+    let (input, is_new) = opt(tag("let"))(input)?;
+    let is_new = is_new.is_some();
+
+    // What is our name?
+    let (input, _) = blank(input)?;
+    let (input, name) = read_variable_name(input)?;
+
+    // Are we given a type or do we need to figure this out?
+    let (input, _) = blank(input)?;
+    let (input, has_type_assignment) = opt(char(':'))(input)?;
+    let has_type_assignment = has_type_assignment.is_some();
+    let (input, type_assignment) = if !has_type_assignment {
+        (input, NLType::None)
+    } else {
+        read_variable_type(input)?
+    };
+
+    // What's the value we are assigning to? Could be a single operation, could be a block, could be anything.
+    let (input, _) = blank(input)?;
+    let (input, assignment) = read_operation(input)?;
+
+    let assignment = OpAssignment {
+        is_new,
+        to_assign: vec![],
+        type_assignment,
+        assignment: Box::new(assignment),
+    };
+
+    Ok((input, NLOperation::Assign(assignment)))
+}
+
+fn read_code_block(input: &str) -> ParserResult<NLOperation> {
     // Filler function.
 
+    let (input, _) = blank(input)?;
     let (input, _) = char('{')(input)?;
+
+    let (input, operations) = many0(read_operation)(input)?;
+
     let (input, _) = blank(input)?;
     let (input, _) = char('}')(input)?;
 
-    Ok((input, NLBlock{}))
+    Ok((input, NLOperation::Block(NLBlock {
+        operations,
+    })))
+}
+
+fn read_operation(input: &str) -> ParserResult<NLOperation> {
+    alt((read_code_block, read_assignment, read_constant))(input)
 }
 
 fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
@@ -366,6 +538,15 @@ fn read_method(input: &str) -> ParserResult<NLImplementor> {
     let (input, return_type) = read_return_type(input)?;
     let (input, _) = blank(input)?;
     let (input, block) = opt(read_code_block)(input)?;
+    let block = match block {
+        Some(block) => {
+            match block {
+                NLOperation::Block(block) => Some(block),
+                _ => None,
+            }
+        },
+        _ => None,
+    };
 
     let method = NLMethod {
         name,
@@ -409,8 +590,19 @@ fn read_getter(input: &str) -> ParserResult<NLImplementor> {
         let (input, nl_type) = read_return_type(input)?;
         let (input, block) = opt(read_code_block)(input)?;
 
+        let block = match block {
+            Some(block) => {
+                match block {
+                    NLOperation::Block(block) => Some(block),
+                    _ => None,
+                }
+            },
+            _ => None,
+        };
+
         match block {
             Some(block) => {
+
                 let getter = NLGetter {
                     name: String::from(name),
                     args,
@@ -456,6 +648,15 @@ fn read_setter(input: &str) -> ParserResult<NLImplementor> {
         let (input, args) = read_argument_deceleration_list(input)?;
         let (input, _) = blank(input)?;
         let (input, block) = opt(read_code_block)(input)?;
+        let block = match block {
+            Some(block) => {
+                match block {
+                    NLOperation::Block(block) => Some(block),
+                    _ => None,
+                }
+            },
+            _ => None,
+        };
 
         match block {
             Some(block) => {
