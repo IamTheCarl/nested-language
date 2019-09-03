@@ -706,10 +706,36 @@ mod executable_blocks {
     mod constants {
         use super::*;
 
+        fn pretty_read(input: &str) -> NLOperation {
+            let result = read_constant(input);
+            match result {
+                Ok(tuple) => {
+                    let (_, op) = tuple;
+
+                    op
+                },
+                Err(e) => {
+                    match e {
+                        nom::Err::Error(e) | nom::Err::Failure(e) => {
+                            let message = convert_error(input, e);
+
+                            // Makes our error messages more readable when running tests.
+                            #[cfg(test)]
+                            println!("{}", message);
+                            panic!(message);
+                        }
+                        nom::Err::Incomplete(_) => {
+                            panic!("Unexpected end of file.");
+                        }
+                    }
+                }
+            }
+        }
+
         #[test]
         fn number() {
             let code = "5";
-            let (_, constant) = read_constant(code).unwrap();
+            let constant = pretty_read(code);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -728,7 +754,7 @@ mod executable_blocks {
         #[test]
         fn negative_number() {
             let code = "-5";
-            let (_, constant) = read_constant(code).unwrap();
+            let constant = pretty_read(code);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -747,7 +773,7 @@ mod executable_blocks {
         #[test]
         fn casted_number() {
             let code = "5 as i64";
-            let (_, constant) = read_constant(code).unwrap();
+            let constant = pretty_read(code);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -766,7 +792,7 @@ mod executable_blocks {
         #[test]
         fn negative_casted_number() {
             let code = "-5 as i64";
-            let (_, constant) = read_constant(code).unwrap();
+            let constant = pretty_read(code);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -785,7 +811,7 @@ mod executable_blocks {
         #[test]
         fn boolean_true() {
             let code = "true";
-            let (_, constant) = read_constant(code).unwrap();
+            let constant = pretty_read(code);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -803,7 +829,7 @@ mod executable_blocks {
         #[test]
         fn boolean_false() {
             let code = "false";
-            let (_, constant) = read_constant(code).unwrap();
+            let constant = pretty_read(code);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -812,6 +838,24 @@ mod executable_blocks {
                             assert_eq!(constant, false, "Constant had wrong value.");
                         },
                         _ => panic!("Expected boolean for constant type."),
+                    }
+                },
+                _ => panic!("Expected constant"),
+            }
+        }
+
+        #[test]
+        fn simple_string() {
+            let code = "\"A simple string.\"";
+            let constant = pretty_read(code);
+
+            match constant {
+                NLOperation::Constant(constant) => {
+                    match constant {
+                        OpConstant::String(string) => {
+                            assert_eq!(string, "A simple string.", "Constant had wrong value.");
+                        },
+                        _ => panic!("Expected string for constant type."),
                     }
                 },
                 _ => panic!("Expected constant"),

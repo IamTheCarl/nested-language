@@ -50,6 +50,8 @@ pub enum NLType<'a> {
     Boolean,
     I8, I16, I32, I64,
     U8, U16, U32, U64,
+    OwnedString,
+    BorrowedString,
     Tuple(Vec<NLType<'a>>),
     OwnedStruct(&'a str),
     ReferencedStruct(&'a str),
@@ -180,8 +182,7 @@ enum CoreDeceleration<'a> {
 enum OpConstant<'a> {
     Boolean(bool),
     Integer(i128, NLType<'a>),
-
-    String(&'a str), // TODO not implemented yet.
+    String(&'a str),
 }
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
@@ -365,7 +366,7 @@ fn parse_integer<T>(input: &str) -> ParserResult<T>
     }
 }
 
-fn read_constant_integer(input: &str) -> ParserResult<OpConstant> {
+fn read_integer_constant(input: &str) -> ParserResult<OpConstant> {
     let (input, number) = terminated(take_while1(is_number), blank)(input)?;
     let (input, cast) = opt(read_cast)(input)?;
 
@@ -384,8 +385,16 @@ fn read_constant_integer(input: &str) -> ParserResult<OpConstant> {
     }
 }
 
+fn read_string_constant(input: &str) -> ParserResult<OpConstant> {
+    // String constants are not pre-escaped. The escape can't be preformed without memory copying, and I want to compleatly avoid that in the
+    // parsing phase.
+    let (input, _) = blank(input)?;
+    let (input, string) = delimited(char('"'), take_while(|c| c != '\"'), char('"'))(input)?;
+    Ok((input, OpConstant::String(string)))
+}
+
 fn read_constant(input: &str) -> ParserResult<NLOperation> {
-    let (input, constant) = alt((read_boolean_constant, read_constant_integer))(input)?;
+    let (input, constant) = alt((read_boolean_constant, read_integer_constant, read_string_constant))(input)?;
 
 
 
@@ -812,9 +821,19 @@ fn read_variable_type(input: &str) -> ParserResult<NLType> {
         "u32"  => Ok((input_new, NLType::U32)),
         "u64"  => Ok((input_new, NLType::U64)),
         "bool" => Ok((input_new, NLType::Boolean)),
+        "str"  => Ok((input_new, NLType::OwnedString)),
+
         _ => {
-            // Okay so we ether have Struct or Trait. Could even be a reference.
-            return identify_struct_or_trait_type(input)
+            // Could it be a referenced string?
+            let (input_new, _) = blank(input)?;
+            let (input_new, is_referenced_string) = opt(preceded(blank, tag("str")))(input_new)?;
+            let is_referenced_string = is_referenced_string.is_some();
+            if is_referenced_string {
+                return Ok((input_new, NLType::BorrowedString));
+            } else {
+                // Okay so we ether have Struct or Trait. Could even be a reference.
+                return identify_struct_or_trait_type(input)
+            }
         }
     }
 }
