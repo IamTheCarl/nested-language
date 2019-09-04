@@ -37,7 +37,6 @@ mod test;
 
 pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
-// TODO add string here.
 #[derive(PartialOrd, PartialEq, Debug)]
 pub enum NLType<'a> {
     None,
@@ -391,9 +390,6 @@ fn read_string_constant(input: &str) -> ParserResult<OpConstant> {
 
 fn read_constant(input: &str) -> ParserResult<NLOperation> {
     let (input, constant) = alt((read_boolean_constant, read_numerical_constant, read_string_constant))(input)?;
-
-
-
     Ok((input, NLOperation::Constant(constant)))
 }
 
@@ -447,9 +443,25 @@ fn read_assignment(input: &str) -> ParserResult<NLOperation> {
     Ok((input, NLOperation::Assign(assignment)))
 }
 
-fn read_code_block(input: &str) -> ParserResult<NLOperation> {
-    // Filler function.
+/*
+fn read_match_body(input: &str) -> ParserResult<NLMatchBody> {
 
+}
+
+fn read_value_match(input: &str) -> ParserResult<NLOperation> {
+    unimplemented!()
+}
+
+fn read_type_match_first(input: &str) -> ParserResult<NLOperation> {
+    unimplemented!()
+}
+
+fn read_type_match_many(input: &str) -> ParserResult<NLOperation> {
+    unimplemented!()
+}
+*/
+
+fn read_code_block(input: &str) -> ParserResult<NLOperation> {
     let (input, _) = blank(input)?;
     let (input, _) = char('{')(input)?;
 
@@ -726,6 +738,7 @@ fn read_setter(input: &str) -> ParserResult<NLImplementor> {
     }
 }
 
+// TODO make it so you can specify required traits.
 fn read_trait(input: &str) -> ParserResult<CoreDeceleration> {
     let (input, _) = blank(input)?;
     let (input, _) = tag("trait")(input)?;
