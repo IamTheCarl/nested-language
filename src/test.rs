@@ -1045,5 +1045,29 @@ mod executable_blocks {
                 _ => panic!("Expected assignment operation."),
             };
         }
+
+        #[test]
+        fn assign_no_define() {
+            let code = "five = 5;";
+            let (_, operation) = read_assignment(code).unwrap();
+
+            match operation {
+                NLOperation::Assign(assign) => {
+                    assert_eq!(assign.is_new, false, "Assignment should have been  new.");
+                    assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
+                    assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
+
+                    assert_eq!(assign.assignment,
+                               Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
+
+                    let variable = &assign.to_assign[0];
+
+                    assert_eq!(variable.name, "five", "Wrong name given to variable.");
+
+
+                },
+                _ => panic!("Expected assignment operation."),
+            };
+        }
     }
 }
