@@ -809,6 +809,44 @@ mod executable_blocks {
         }
 
         #[test]
+        fn float() {
+            let code = "5.5";
+            let constant = pretty_read(code);
+
+            match constant {
+                NLOperation::Constant(constant) => {
+                    match constant {
+                        OpConstant::Float(constant, cast) => {
+                            assert_eq!(constant, 5.5, "Constant had wrong value.");
+                            assert_eq!(cast, NLType::None, "Wrong type cast recommendation.");
+                        },
+                        _ => panic!("Expected integer for constant type."),
+                    }
+                },
+                _ => panic!("Expected constant"),
+            }
+        }
+
+        #[test]
+        fn float_with_cast() {
+            let code = "5.5 as f64";
+            let constant = pretty_read(code);
+
+            match constant {
+                NLOperation::Constant(constant) => {
+                    match constant {
+                        OpConstant::Float(constant, cast) => {
+                            assert_eq!(constant, 5.5, "Constant had wrong value.");
+                            assert_eq!(cast, NLType::F64, "Wrong type cast recommendation.");
+                        },
+                        _ => panic!("Expected integer for constant type."),
+                    }
+                },
+                _ => panic!("Expected constant"),
+            }
+        }
+
+        #[test]
         fn boolean_true() {
             let code = "true";
             let constant = pretty_read(code);

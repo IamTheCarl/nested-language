@@ -37,19 +37,14 @@ mod test;
 
 pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
-#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub enum NLAccessRule {
-    Internal,
-    External,
-}
-
 // TODO add string here.
-#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(PartialOrd, PartialEq, Debug)]
 pub enum NLType<'a> {
     None,
     Boolean,
     I8, I16, I32, I64,
     U8, U16, U32, U64,
+    F32, F64,
     OwnedString,
     BorrowedString,
     Tuple(Vec<NLType<'a>>),
@@ -83,7 +78,7 @@ impl<'a> NLArgument<'a> {
     pub fn get_type(&self) -> &NLType { &self.nl_type }
 }
 
-#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(PartialOrd, PartialEq, Debug)]
 pub struct NLBlock<'a> {
     operations: Vec<NLOperation<'a>>,
 }
@@ -108,7 +103,7 @@ impl<'a> NLMethod<'a> {
     pub fn get_block(&self) -> &Option<NLBlock> { &self.block }
 }
 
-#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(PartialOrd, PartialEq, Debug)]
 pub enum NLEncapsulationBlock<'a> {
     Some(NLBlock<'a>),
     None,
@@ -178,19 +173,20 @@ enum CoreDeceleration<'a> {
     Trait(NLTrait<'a>),
 }
 
-#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(PartialOrd, PartialEq, Debug)]
 enum OpConstant<'a> {
     Boolean(bool),
-    Integer(i128, NLType<'a>),
+    Integer(i64, NLType<'a>),
+    Float(f64, NLType<'a>),
     String(&'a str),
 }
 
-#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(PartialOrd, PartialEq, Debug)]
 struct OpVariable<'a> {
     name: &'a str,
 }
 
-#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(PartialOrd, PartialEq, Debug)]
 struct OpAssignment<'a> {
     is_new: bool,
     to_assign: Vec<OpVariable<'a>>,
@@ -198,7 +194,7 @@ struct OpAssignment<'a> {
     assignment: Box<NLOperation<'a>>,
 }
 
-#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+#[derive(PartialOrd, PartialEq, Debug)]
 enum NLOperation<'a> {
     Block(NLBlock<'a>),
     Constant(OpConstant<'a>),
@@ -366,22 +362,22 @@ fn parse_integer<T>(input: &str) -> ParserResult<T>
     }
 }
 
-fn read_integer_constant(input: &str) -> ParserResult<OpConstant> {
+fn read_numerical_constant(input: &str) -> ParserResult<OpConstant> {
     let (input, number) = terminated(take_while1(is_number), blank)(input)?;
     let (input, cast) = opt(read_cast)(input)?;
 
-    if !number.contains(".") {
-        let cast = match cast {
-            Some(cast) => cast,
-            None => NLType::None,
-        };
+    let cast = match cast {
+        Some(cast) => cast,
+        None => NLType::None,
+    };
 
-        // Start with the biggest value possible. Then figure out which range it fits in.
-        let (_, value) = parse_integer::<i128>(number)?;
+    if !number.contains(".") {
+        let (_, value) = parse_integer::<i64>(number)?;
         Ok((input, OpConstant::Integer(value, cast)))
     } else {
         // Has to be a floating point number.
-        unimplemented!()
+        let (_, value) = parse_integer::<f64>(number)?;
+        Ok((input, OpConstant::Float(value, cast)))
     }
 }
 
@@ -394,7 +390,7 @@ fn read_string_constant(input: &str) -> ParserResult<OpConstant> {
 }
 
 fn read_constant(input: &str) -> ParserResult<NLOperation> {
-    let (input, constant) = alt((read_boolean_constant, read_integer_constant, read_string_constant))(input)?;
+    let (input, constant) = alt((read_boolean_constant, read_numerical_constant, read_string_constant))(input)?;
 
 
 
@@ -810,7 +806,6 @@ fn read_variable_type(input: &str) -> ParserResult<NLType> {
     let (input, _) = blank(input)?;
     let (input_new, type_name) = alphanumeric0(input)?;
 
-    // TODO figure out how to differentiate traits and structs.
     match type_name {
         "i8"   => Ok((input_new, NLType::I8)),
         "i16"  => Ok((input_new, NLType::I16)),
@@ -820,6 +815,8 @@ fn read_variable_type(input: &str) -> ParserResult<NLType> {
         "u16"  => Ok((input_new, NLType::U16)),
         "u32"  => Ok((input_new, NLType::U32)),
         "u64"  => Ok((input_new, NLType::U64)),
+        "f32"  => Ok((input_new, NLType::F32)),
+        "f64"  => Ok((input_new, NLType::F64)),
         "bool" => Ok((input_new, NLType::Boolean)),
         "str"  => Ok((input_new, NLType::OwnedString)),
 
