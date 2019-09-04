@@ -977,6 +977,9 @@ mod executable_blocks {
                     assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
                     assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
 
+                    assert_eq!(assign.assignment,
+                               Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
+
                     let variable = &assign.to_assign[0];
 
                     assert_eq!(variable.name, "five", "Wrong name given to variable.");
