@@ -194,11 +194,42 @@ struct OpAssignment<'a> {
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
+enum OpOperator<'a> {
+    Equal(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    NotEqual(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+
+    LogicalInversion(Box<NLOperation<'a>>),
+
+    LogicalAnd(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    LogicalOr(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    LogicalXor(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+
+    BitAnd(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    BitOr(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    BitXor(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+
+    ArithmeticNegate(Box<NLOperation<'a>>),
+    BitNegate(Box<NLOperation<'a>>),
+
+    BitLeftShift(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    BitRightShift(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+
+    PropError(Box<NLOperation<'a>>),
+
+    Mod(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    Add(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    Sub(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    Mul(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    Div(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+}
+
+#[derive(PartialOrd, PartialEq, Debug)]
 enum NLOperation<'a> {
     Block(NLBlock<'a>),
     Constant(OpConstant<'a>),
     Assign(OpAssignment<'a>),
-    Tuple(Vec<NLOperation<'a>>)
+    Tuple(Vec<NLOperation<'a>>),
+    Operator(OpOperator<'a>),
 }
 
 
@@ -460,6 +491,11 @@ fn read_type_match_many(input: &str) -> ParserResult<NLOperation> {
     unimplemented!()
 }
 */
+
+fn read_operator(input: &str) -> ParserResult<NLOperation> {
+    unimplemented!()
+    // OpOperator
+}
 
 fn read_code_block(input: &str) -> ParserResult<NLOperation> {
     let (input, _) = blank(input)?;

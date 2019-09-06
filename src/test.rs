@@ -703,39 +703,39 @@ mod structure_and_root {
 mod executable_blocks {
     use super::*;
 
-    mod constants {
-        use super::*;
+    fn pretty_read<'a>(input: &'a str, function: &Fn(&str) -> ParserResult<NLOperation>) -> NLOperation<'a> {
+        let result = function(input);
+        match result {
+            Ok(tuple) => {
+                let (_, op) = tuple;
 
-        fn pretty_read(input: &str) -> NLOperation {
-            let result = read_constant(input);
-            match result {
-                Ok(tuple) => {
-                    let (_, op) = tuple;
+                op
+            },
+            Err(e) => {
+                match e {
+                    nom::Err::Error(e) | nom::Err::Failure(e) => {
+                        let message = convert_error(input, e);
 
-                    op
-                },
-                Err(e) => {
-                    match e {
-                        nom::Err::Error(e) | nom::Err::Failure(e) => {
-                            let message = convert_error(input, e);
-
-                            // Makes our error messages more readable when running tests.
-                            #[cfg(test)]
-                            println!("{}", message);
-                            panic!(message);
-                        }
-                        nom::Err::Incomplete(_) => {
-                            panic!("Unexpected end of file.");
-                        }
+                        // Makes our error messages more readable when running tests.
+                        #[cfg(test)]
+                        println!("{}", message);
+                        panic!(message);
+                    }
+                    nom::Err::Incomplete(_) => {
+                        panic!("Unexpected end of file.");
                     }
                 }
             }
         }
+    }
+
+    mod constants {
+        use super::*;
 
         #[test]
         fn number() {
             let code = "5";
-            let constant = pretty_read(code);
+            let constant = pretty_read(code, &read_constant);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -754,7 +754,7 @@ mod executable_blocks {
         #[test]
         fn negative_number() {
             let code = "-5";
-            let constant = pretty_read(code);
+            let constant = pretty_read(code, &read_constant);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -773,7 +773,7 @@ mod executable_blocks {
         #[test]
         fn casted_number() {
             let code = "5 as i64";
-            let constant = pretty_read(code);
+            let constant = pretty_read(code, &read_constant);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -792,7 +792,7 @@ mod executable_blocks {
         #[test]
         fn negative_casted_number() {
             let code = "-5 as i64";
-            let constant = pretty_read(code);
+            let constant = pretty_read(code, &read_constant);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -811,7 +811,7 @@ mod executable_blocks {
         #[test]
         fn float() {
             let code = "5.5";
-            let constant = pretty_read(code);
+            let constant = pretty_read(code, &read_constant);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -830,7 +830,7 @@ mod executable_blocks {
         #[test]
         fn float_with_cast() {
             let code = "5.5 as f64";
-            let constant = pretty_read(code);
+            let constant = pretty_read(code, &read_constant);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -849,7 +849,7 @@ mod executable_blocks {
         #[test]
         fn boolean_true() {
             let code = "true";
-            let constant = pretty_read(code);
+            let constant = pretty_read(code, &read_constant);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -867,7 +867,7 @@ mod executable_blocks {
         #[test]
         fn boolean_false() {
             let code = "false";
-            let constant = pretty_read(code);
+            let constant = pretty_read(code, &read_constant);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -885,7 +885,7 @@ mod executable_blocks {
         #[test]
         fn simple_string() {
             let code = "\"A simple string.\"";
-            let constant = pretty_read(code);
+            let constant = pretty_read(code, &read_constant);
 
             match constant {
                 NLOperation::Constant(constant) => {
@@ -1072,6 +1072,123 @@ mod executable_blocks {
     }
 
     mod match_body {
+        use super::*;
+    }
 
+    mod operators {
+        use super::*;
+
+        fn unwrap_constant_number(op: &NLOperation) -> i64 {
+            match op {
+                NLOperation::Constant(constant) => {
+                    match constant {
+                        OpConstant::Integer(value, _) => {
+                            *value
+                        },
+                        _ => {
+                            panic!("Expected constant integer.");
+                        }
+                    }
+                },
+                _ => {
+                    panic!("Expected constant.");
+                }
+            }
+        }
+
+        /*
+            LogicalInversion(Box<NLOperation<'a>>),
+
+            LogicalAnd(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+            LogicalOr(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+            LogicalXor(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+
+            BitAnd(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+            BitOr(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+            BitXor(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+
+            ArithmeticNegate(Box<NLOperation<'a>>),
+            BitNegate(Box<NLOperation<'a>>),
+
+            BitLeftShift(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+            BitRightShift(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+
+            PropError(Box<NLOperation<'a>>),
+
+            Mod(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+            Add(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+            Sub(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+            Mul(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+            Div(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+        */
+
+        #[test]
+        fn numbers_equal() {
+            let code = "2 == 3";
+            let operation = pretty_read(code, &read_operator);
+
+            match operation {
+                NLOperation::Operator(op) => {
+                    match op {
+                        OpOperator::Equal(a, b) => {
+                            assert_eq!(unwrap_constant_number(&a), 2, "Wrong number for left operand.");
+                            assert_eq!(unwrap_constant_number(&b), 3, "Wrong number for right operand.");
+                        },
+                        _ => {
+                            panic!("Wrong operation.");
+                        }
+                    }
+                }
+                _ => {
+                    panic!("Expected operator.");
+                }
+            }
+        }
+
+        #[test]
+        fn numbers_not_equal() {
+            let code = "2 != 3";
+            let operation = pretty_read(code, &read_operator);
+
+            match operation {
+                NLOperation::Operator(op) => {
+                    match op {
+                        OpOperator::NotEqual(a, b) => {
+                            assert_eq!(unwrap_constant_number(&a), 2, "Wrong number for left operand.");
+                            assert_eq!(unwrap_constant_number(&b), 3, "Wrong number for right operand.");
+                        },
+                        _ => {
+                            panic!("Wrong operation.");
+                        }
+                    }
+                }
+                _ => {
+                    panic!("Expected operator.");
+                }
+            }
+        }
+
+        #[test]
+        fn logical_inversion() {
+            let code = "!false";
+            let operation = pretty_read(code, &read_operator);
+
+            match operation {
+                NLOperation::Operator(op) => {
+                    match op {
+                        OpOperator::NotEqual(a, b) => {
+                            assert_eq!(unwrap_constant_number(&a), 2, "Wrong number for left operand.");
+                            assert_eq!(unwrap_constant_number(&b), 3, "Wrong number for right operand.");
+                        },
+                        _ => {
+                            panic!("Wrong operation.");
+                        }
+                    }
+                }
+                _ => {
+                    panic!("Expected operator.");
+                }
+            }
+        }
     }
 }
