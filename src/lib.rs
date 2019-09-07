@@ -198,7 +198,7 @@ enum OpOperator<'a> {
     Equal(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
     NotEqual(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
 
-    LogicalInversion(Box<NLOperation<'a>>),
+    LogicalNegate(Box<NLOperation<'a>>),
 
     LogicalAnd(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
     LogicalOr(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
@@ -216,11 +216,11 @@ enum OpOperator<'a> {
 
     PropError(Box<NLOperation<'a>>),
 
-    Mod(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    Add(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    Sub(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    Mul(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    Div(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    ArithmeticMod(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    ArithmeticAdd(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    ArithmeticSub(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    ArithmeticMul(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    ArithmeticDiv(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
