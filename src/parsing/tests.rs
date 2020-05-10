@@ -1,7 +1,33 @@
 
 use super::*;
 
-mod structure_and_root {
+fn pretty_read<'a, T>(input: &'a str, function: &dyn Fn(&'a str) -> ParserResult<T>) -> T {
+    let result = function(input);
+    match result {
+        Ok(tuple) => {
+            let (_, result) = tuple;
+
+            result
+        },
+        Err(e) => {
+            match e {
+                nom::Err::Error(e) | nom::Err::Failure(e) => {
+                    let message = convert_error(input, e);
+
+                    // Makes our error messages more readable when running tests.
+                    #[cfg(test)]
+                    println!("{}", message);
+                    panic!(message);
+                }
+                nom::Err::Incomplete(_) => {
+                    panic!("Unexpected end of file.");
+                }
+            }
+        }
+    }
+}
+
+mod root {
     use super::*;
 
     #[test]
@@ -18,7 +44,7 @@ mod structure_and_root {
     #[test]
     /// Compile a file with an empty struct and an empty trait. We should get no errors or warnings.
     fn empty_struct_and_trait() {
-        let file_name = "tests/empty_struct_and_trait.nl";
+        let file_name = "tests/parsing/empty_struct_and_trait.nl";
         parse_file(&mut Path::new(file_name), &|file: &NLFile| {
             assert_eq!(file.name, "empty_struct_and_trait.nl", "File name not copied correctly.");
 
@@ -35,12 +61,12 @@ mod structure_and_root {
     #[test]
     /// Compile a file with an invalid token in its root.
     fn bad_root() {
-        let file_name = "tests/bad_root.nl";
+        let file_name = "tests/parsing/bad_root.nl";
         let result = parse_file(&mut Path::new(file_name), &|_file: &NLFile| {});
         match result {
             Err(error) => {
                 // Everything is fine! ... in a way.
-                assert!(error.description().contains("I shouldn't be here in the root."));
+                assert!(error.to_string().contains("I shouldn't be here in the root."));
             },
             Ok(_) => {
                 panic!("No error when one was expected.");
@@ -54,7 +80,7 @@ mod structure_and_root {
         #[test]
         /// Compile a file with a single empty struct. We should get no errors or warnings.
         fn single_empty_struct() {
-            let file_name = "tests/single_struct_empty.nl";
+            let file_name = "tests/parsing/single_struct_empty.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
                 assert_eq!(file.name, "single_struct_empty.nl", "File name not copied correctly.");
 
@@ -69,7 +95,7 @@ mod structure_and_root {
         #[test]
         /// Compile a single struct with a single variable.
         fn single_variable_struct() {
-            let file_name = "tests/struct_with_single_variable.nl";
+            let file_name = "tests/parsing/struct_with_single_variable.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
                 assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
                 let my_struct = &file.structs[0];
@@ -84,7 +110,7 @@ mod structure_and_root {
         #[test]
         /// Compile a single struct with a single variable. We don't put the trailing comma after this one.
         fn single_variable_struct_no_ending_comma() {
-            let file_name = "tests/struct_with_single_variable_no_comma.nl";
+            let file_name = "tests/parsing/struct_with_single_variable_no_comma.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
                 assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
                 let my_struct = &file.structs[0];
@@ -99,7 +125,7 @@ mod structure_and_root {
         #[test]
         /// Compile a single struct with two variables. We don't put the trailing comma after the last one.
         fn two_variable_struct_no_ending_comma() {
-            let file_name = "tests/struct_with_two_variables_no_ending_comma.nl";
+            let file_name = "tests/parsing/struct_with_two_variables_no_ending_comma.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
                 assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
                 let my_struct = &file.structs[0];
@@ -119,7 +145,7 @@ mod structure_and_root {
         #[test]
         /// Compile a file with an empty struct and an empty trait. This one is special because it has single line comments in it.
         fn empty_struct_and_trait_single_line_comments() {
-            let file_name = "tests/empty_struct_and_trait_with_single_line_comments.nl";
+            let file_name = "tests/parsing/empty_struct_and_trait_with_single_line_comments.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
                 assert_eq!(file.name, "empty_struct_and_trait_with_single_line_comments.nl", "File name not copied correctly.");
 
@@ -136,7 +162,7 @@ mod structure_and_root {
         #[test]
         /// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
         fn empty_struct_and_trait_multi_line_comments() {
-            let file_name = "tests/empty_struct_and_trait_with_multi_line_comments.nl";
+            let file_name = "tests/parsing/empty_struct_and_trait_with_multi_line_comments.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
                 assert_eq!(file.name, "empty_struct_and_trait_with_multi_line_comments.nl", "File name not copied correctly.");
 
@@ -153,7 +179,7 @@ mod structure_and_root {
         #[test]
         /// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
         fn struct_empty_self_implementation() {
-            let file_name = "tests/struct_with_empty_self_implementation.nl";
+            let file_name = "tests/parsing/struct_with_empty_self_implementation.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
                 assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
                 let my_struct = &file.structs[0];
@@ -168,7 +194,7 @@ mod structure_and_root {
         #[test]
         /// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
         fn struct_self_implementation_with_methods() {
-            let file_name = "tests/struct_self_implementation_with_methods.nl";
+            let file_name = "tests/parsing/struct_self_implementation_with_methods.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
                 assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
                 let my_struct = &file.structs[0];
@@ -184,7 +210,7 @@ mod structure_and_root {
         #[test]
         /// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
         fn struct_self_implementation_with_methods_and_encapsulations() {
-            let file_name = "tests/struct_self_implementation_with_methods_and_encapsulations.nl";
+            let file_name = "tests/parsing/struct_self_implementation_with_methods_and_encapsulations.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
                 assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
                 let my_struct = &file.structs[0];
@@ -204,7 +230,7 @@ mod structure_and_root {
         #[test]
         /// Compile a file with a single empty trait. We should get no errors or warnings.
         fn single_empty_trait() {
-            let file_name = "tests/single_trait_empty.nl";
+            let file_name = "tests/parsing/single_trait_empty.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
                 assert_eq!(file.name, "single_trait_empty.nl", "File name not copied correctly.");
 
@@ -219,7 +245,7 @@ mod structure_and_root {
         #[test]
         /// Tests a struct with encapsulations.
         fn trait_with_methods_and_encapsulators() {
-            let file_name = "tests/trait_with_methods_and_encapsulators.nl";
+            let file_name = "tests/parsing/trait_with_methods_and_encapsulators.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
                 assert_eq!(file.traits.len(), 1, "Wrong number of traits.");
                 let my_trait = &file.traits[0];
@@ -233,37 +259,11 @@ mod structure_and_root {
     mod argument_list {
         use super::*;
 
-        fn pretty_read(input: &str) -> Vec<NLArgument> {
-            let result = read_argument_deceleration_list(input);
-            match result {
-                Ok(tuple) => {
-                    let (_, args) = tuple;
-
-                    args
-                },
-                Err(e) => {
-                    match e {
-                        nom::Err::Error(e) | nom::Err::Failure(e) => {
-                            let message = convert_error(input, e);
-
-                            // Makes our error messages more readable when running tests.
-                            #[cfg(test)]
-                            println!("{}", message);
-                            panic!(message);
-                        }
-                        nom::Err::Incomplete(_) => {
-                            panic!("Unexpected end of file.");
-                        }
-                    }
-                }
-            }
-        }
-
         #[test]
         /// Testing the argument declaration reader.
         fn empty() {
             let code = "()";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 0, "Wrong number of args.");
         }
@@ -272,7 +272,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn single_arg() {
             let code = "(argA : i32)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 1, "Wrong number of args.");
 
@@ -285,7 +285,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn two_args() {
             let code = "(argA : i32, argB : i16)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 2, "Wrong number of args.");
 
@@ -302,7 +302,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn three_args() {
             let code = "(argA : i32, argB : i16, argC: i8)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 3, "Wrong number of args.");
 
@@ -323,7 +323,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn self_reference_arg() {
             let code = "(&self)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 1, "Wrong number of args.");
 
@@ -336,7 +336,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn mutable_self_reference_arg() {
             let code = "(&mut self)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 1, "Wrong number of args.");
 
@@ -349,7 +349,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn mutable_self_reference_arg_odd_spacing() {
             let code = "(&mut\tself)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 1, "Wrong number of args.");
 
@@ -362,7 +362,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn self_reference_arg_odd_pre_space() {
             let code = "(& self)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 1, "Wrong number of args.");
 
@@ -375,7 +375,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn mutable_self_reference_arg_odd_pre_space() {
             let code = "(& mut self)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 1, "Wrong number of args.");
 
@@ -388,7 +388,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn struct_reference() {
             let code = "(var: &SomeStruct)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 1, "Wrong number of args.");
 
@@ -401,7 +401,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn mutable_struct_reference() {
             let code = "(var: &mut SomeStruct)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 1, "Wrong number of args.");
 
@@ -414,7 +414,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn struct_owned() {
             let code = "(var: SomeStruct)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 1, "Wrong number of args.");
 
@@ -427,7 +427,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn trait_reference() {
             let code = "(var: &dyn SomeTrait)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 1, "Wrong number of args.");
 
@@ -440,7 +440,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn mutable_trait_reference() {
             let code = "(var: &mut dyn SomeTrait)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 1, "Wrong number of args.");
 
@@ -453,7 +453,7 @@ mod structure_and_root {
         /// Testing the argument declaration reader.
         fn trait_owned() {
             let code = "(var: dyn SomeTrait)";
-            let args = pretty_read(code);
+            let args = pretty_read(code, &read_argument_deceleration_list);
 
             assert_eq!(args.len(), 1, "Wrong number of args.");
 
@@ -463,10 +463,55 @@ mod structure_and_root {
         }
     }
 
+    mod global_functions {
+        use super::*;
+
+        #[test]
+        fn all_global_function_types() {
+            let file_name = "tests/parsing/global_functions.nl";
+            parse_file(&mut Path::new(file_name), &|file: &NLFile| {
+                assert_eq!(file.name, "global_functions.nl", "File name not copied correctly.");
+
+                assert_eq!(file.functions.len(), 4, "Wrong number of functions.");
+
+                // fn my_function();
+                let function = &file.functions[0];
+                assert_eq!(function.get_name(), "my_function", "Wrong name for function.");
+                assert_eq!(function.arguments.len(), 0, "Wrong number of arguments.");
+                assert_eq!(function.return_type, NLType::None, "Wrong return type.");
+                assert_eq!(function.block.is_none(), true, "Function should not have been implemented.");
+
+                // fn my_function() {}
+                let function = &file.functions[1];
+                assert_eq!(function.get_name(), "my_function", "Wrong name for function.");
+                assert_eq!(function.arguments.len(), 0, "Wrong number of arguments.");
+                assert_eq!(function.return_type, NLType::None, "Wrong return type.");
+                assert_eq!(function.block.is_some(), true, "Function should not have been implemented.");
+
+                // fn my_function() -> i32;
+                let function = &file.functions[2];
+                assert_eq!(function.get_name(), "my_function", "Wrong name for function.");
+                assert_eq!(function.arguments.len(), 0, "Wrong number of arguments.");
+                assert_eq!(function.return_type, NLType::I32, "Wrong return type.");
+                assert_eq!(function.block.is_none(), true, "Function should not have been implemented.");
+
+                // fn my_function() -> i32 {}
+                let function = &file.functions[3];
+                assert_eq!(function.get_name(), "my_function", "Wrong name for function.");
+                assert_eq!(function.arguments.len(), 0, "Wrong number of arguments.");
+                assert_eq!(function.return_type, NLType::I32, "Wrong return type.");
+                assert_eq!(function.block.is_some(), true, "Function should not have been implemented.");
+
+                assert_eq!(file.traits.len(), 0, "Wrong number of traits.");
+                assert_eq!(file.structs.len(), 0, "Wrong number of structs.");
+            }).unwrap();
+        }
+    }
+
     mod nl_methods {
         use super::*;
 
-        fn pretty_read_method(input: &str) -> (&str, NLMethod) {
+        fn pretty_read_method(input: &str) -> (&str, NLFunction) {
             let result = read_method(input);
             match result {
                 Ok(tuple) => {
@@ -702,32 +747,6 @@ mod structure_and_root {
 
 mod executable_blocks {
     use super::*;
-
-    fn pretty_read<'a>(input: &'a str, function: &Fn(&str) -> ParserResult<NLOperation>) -> NLOperation<'a> {
-        let result = function(input);
-        match result {
-            Ok(tuple) => {
-                let (_, op) = tuple;
-
-                op
-            },
-            Err(e) => {
-                match e {
-                    nom::Err::Error(e) | nom::Err::Failure(e) => {
-                        let message = convert_error(input, e);
-
-                        // Makes our error messages more readable when running tests.
-                        #[cfg(test)]
-                        println!("{}", message);
-                        panic!(message);
-                    }
-                    nom::Err::Incomplete(_) => {
-                        panic!("Unexpected end of file.");
-                    }
-                }
-            }
-        }
-    }
 
     fn unwrap_constant<'a>(op: &'a NLOperation) -> &'a OpConstant<'a> {
         match op {
@@ -1087,36 +1106,108 @@ mod executable_blocks {
             PropError(Box<NLOperation<'a>>),
         */
 
-        #[test]
-        fn numbers_equal() {
-            let code = "2 == 3";
-            let operation = pretty_read(code, &read_operator);
-            let operation = unwrap_operator(&operation);
+        mod comparison {
+            use super::*;
 
-            match operation {
-                OpOperator::Equal(a, b) => {
-                    assert_eq!(unwrap_constant_number(&a), 2, "Wrong number for left operand.");
-                    assert_eq!(unwrap_constant_number(&b), 3, "Wrong number for right operand.");
-                },
-                _ => {
-                    panic!("Wrong operation.");
+            #[test]
+            fn equal() {
+                let code = "2 == 3";
+                let operation = pretty_read(code, &read_operator);
+                let operation = unwrap_operator(&operation);
+
+                match operation {
+                    OpOperator::CompareEqual(a, b) => {
+                        assert_eq!(unwrap_constant_number(&a), 2, "Wrong number for left operand.");
+                        assert_eq!(unwrap_constant_number(&b), 3, "Wrong number for right operand.");
+                    },
+                    _ => {
+                        panic!("Wrong operation.");
+                    }
                 }
             }
-        }
 
-        #[test]
-        fn numbers_not_equal() {
-            let code = "2 != 3";
-            let operation = pretty_read(code, &read_operator);
-            let operation = unwrap_operator(&operation);
+            #[test]
+            fn not_equal() {
+                let code = "2 != 3";
+                let operation = pretty_read(code, &read_operator);
+                let operation = unwrap_operator(&operation);
 
-            match operation {
-                OpOperator::NotEqual(a, b) => {
-                    assert_eq!(unwrap_constant_number(&a), 2, "Wrong number for left operand.");
-                    assert_eq!(unwrap_constant_number(&b), 3, "Wrong number for right operand.");
-                },
-                _ => {
-                    panic!("Wrong operation.");
+                match operation {
+                    OpOperator::CompareNotEqual(a, b) => {
+                        assert_eq!(unwrap_constant_number(&a), 2, "Wrong number for left operand.");
+                        assert_eq!(unwrap_constant_number(&b), 3, "Wrong number for right operand.");
+                    },
+                    _ => {
+                        panic!("Wrong operation.");
+                    }
+                }
+            }
+
+            #[test]
+            fn greater() {
+                let code = "2 > 3";
+                let operation = pretty_read(code, &read_operator);
+                let operation = unwrap_operator(&operation);
+
+                match operation {
+                    OpOperator::CompareGreater(a, b) => {
+                        assert_eq!(unwrap_constant_number(&a), 2, "Wrong number for left operand.");
+                        assert_eq!(unwrap_constant_number(&b), 3, "Wrong number for right operand.");
+                    },
+                    _ => {
+                        panic!("Wrong operation.");
+                    }
+                }
+            }
+
+            #[test]
+            fn less() {
+                let code = "2 < 3";
+                let operation = pretty_read(code, &read_operator);
+                let operation = unwrap_operator(&operation);
+
+                match operation {
+                    OpOperator::CompareLess(a, b) => {
+                        assert_eq!(unwrap_constant_number(&a), 2, "Wrong number for left operand.");
+                        assert_eq!(unwrap_constant_number(&b), 3, "Wrong number for right operand.");
+                    },
+                    _ => {
+                        panic!("Wrong operation.");
+                    }
+                }
+            }
+
+            #[test]
+            fn greater_equal() {
+                let code = "2 >= 3";
+                let operation = pretty_read(code, &read_operator);
+                let operation = unwrap_operator(&operation);
+
+                match operation {
+                    OpOperator::CompareGreaterEqual(a, b) => {
+                        assert_eq!(unwrap_constant_number(&a), 2, "Wrong number for left operand.");
+                        assert_eq!(unwrap_constant_number(&b), 3, "Wrong number for right operand.");
+                    },
+                    _ => {
+                        panic!("Wrong operation.");
+                    }
+                }
+            }
+
+            #[test]
+            fn less_equal() {
+                let code = "2 <= 3";
+                let operation = pretty_read(code, &read_operator);
+                let operation = unwrap_operator(&operation);
+
+                match operation {
+                    OpOperator::CompareLessEqual(a, b) => {
+                        assert_eq!(unwrap_constant_number(&a), 2, "Wrong number for left operand.");
+                        assert_eq!(unwrap_constant_number(&b), 3, "Wrong number for right operand.");
+                    },
+                    _ => {
+                        panic!("Wrong operation.");
+                    }
                 }
             }
         }
