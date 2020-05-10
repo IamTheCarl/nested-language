@@ -30,7 +30,6 @@ use nom::character::complete::alphanumeric1;
 use nom::bytes::complete::take_while;
 use nom::character::is_alphanumeric;
 use nom::character::complete::alpha1;
-use nom::bytes::complete::take;
 
 // All tests are kept in their own module.
 #[cfg(test)]
@@ -325,7 +324,7 @@ fn read_tuple_of_variable_names(input: &str) -> ParserResult<Vec<&str>> {
     Ok((input, variables))
 }
 
-fn read_tuple_operation(input: &str) -> ParserResult<NLOperation> {
+fn read_tuple(input: &str) -> ParserResult<NLOperation> {
     let (input, _) = blank(input)?;
     let (input, tuple_str) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
 
@@ -500,14 +499,10 @@ fn read_type_match_many(input: &str) -> ParserResult<NLOperation> {
 }
 */
 
-fn read_operation_or_operator(input: &str) -> ParserResult<NLOperation> {
-    alt((read_operator, read_operation))(input)
-}
-
 fn take_operator_symbol(input: &str) -> ParserResult<&str> {
     fn is_operator_symbol(c: char) -> bool {
         match c {
-            '=' | '!' | '~' | '|' | '&' | '^' | '%' | '+' | '-' | '*' | '/' => true,
+            '=' | '!' | '~' | '|' | '&' | '^' | '%' | '+' | '-' | '*' | '/' | '<' | '>' => true,
             _ => false,
         }
     }
@@ -515,19 +510,54 @@ fn take_operator_symbol(input: &str) -> ParserResult<&str> {
     take_while1(is_operator_symbol)(input)
 }
 
-fn read_operator(input: &str) -> ParserResult<NLOperation> {
+fn read_urinary_operator(input: &str) -> ParserResult<NLOperation> {
     let (input, _) = blank(input)?;
-    let (input, operand_a) = read_operation(input)?;
+    let (input, operator) = take_operator_symbol(input)?;
+
+    let (input, _) = blank(input)?;
+    let (input, operand) = read_operation(input)?;
+    let operand = Box::new(operand);
+
+    match operator {
+        "!" => {
+            let operator = OpOperator::LogicalNegate(operand);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        "~" => {
+            let operator = OpOperator::BitNegate(operand);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        "-" => {
+            let operator = OpOperator::ArithmeticNegate(operand);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+
+        _ => {
+            let vek = VerboseErrorKind::Context("unknown operator");
+
+            let ve = VerboseError {
+                errors: vec![(input, vek)]
+            };
+
+            Err(NomErr::Failure(ve))
+        }
+    }
+}
+
+fn read_binary_operator(input: &str) -> ParserResult<NLOperation> {
+    let (input, _) = blank(input)?;
+    let (input, operand_a) = read_sub_operation(input)?;
     let operand_a = Box::new(operand_a);
 
     let (input, _) = blank(input)?;
     let (input, operator) = take_operator_symbol(input)?;
 
     let (input, _) = blank(input)?;
-    let (input, operand_b) = read_operation(input)?;
+    let (input, operand_b) = read_sub_operation(input)?;
     let operand_b = Box::new(operand_b);
 
     match operator {
+        // Logical operators.
         "==" => {
             let operator = OpOperator::CompareEqual(operand_a, operand_b);
             Ok((input, NLOperation::Operator(operator)))
@@ -536,7 +566,24 @@ fn read_operator(input: &str) -> ParserResult<NLOperation> {
             let operator = OpOperator::CompareNotEqual(operand_a, operand_b);
             Ok((input, NLOperation::Operator(operator)))
         },
+        // TODO create formal errors for => and =< operators to help the noobs.
+        ">=" => {
+            let operator = OpOperator::CompareGreaterEqual(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        "<=" => {
+            let operator = OpOperator::CompareLessEqual(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
 
+        ">" => {
+            let operator = OpOperator::CompareGreater(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        "<" => {
+            let operator = OpOperator::CompareLess(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
         "&&" => {
             let operator = OpOperator::LogicalAnd(operand_a, operand_b);
             Ok((input, NLOperation::Operator(operator)))
@@ -547,6 +594,50 @@ fn read_operator(input: &str) -> ParserResult<NLOperation> {
         },
         "^^" => {
             let operator = OpOperator::LogicalXor(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+
+        // Bitwise operators.
+        "&" => {
+            let operator = OpOperator::BitAnd(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        "|" => {
+            let operator = OpOperator::BitOr(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        "^" => {
+            let operator = OpOperator::BitXor(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        "<<" => {
+            let operator = OpOperator::BitLeftShift(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        ">>" => {
+            let operator = OpOperator::BitRightShift(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+
+        // Arithmetic operators.
+        "+" => {
+            let operator = OpOperator::ArithmeticAdd(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        "-" => {
+            let operator = OpOperator::ArithmeticSub(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        "%" => {
+            let operator = OpOperator::ArithmeticMod(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        "/" => {
+            let operator = OpOperator::ArithmeticDiv(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        "*" => {
+            let operator = OpOperator::ArithmeticMul(operand_a, operand_b);
             Ok((input, NLOperation::Operator(operator)))
         },
 
@@ -576,8 +667,12 @@ fn read_code_block(input: &str) -> ParserResult<NLOperation> {
     })))
 }
 
+fn read_sub_operation(input: &str) -> ParserResult<NLOperation> {
+    alt((read_code_block, read_tuple, read_assignment, read_constant, read_urinary_operator))(input)
+}
+
 fn read_operation(input: &str) -> ParserResult<NLOperation> {
-    alt((read_code_block, read_tuple_operation, read_assignment, read_constant))(input)
+    alt((read_code_block, read_tuple, read_assignment, read_binary_operator, read_constant, read_urinary_operator))(input)
 }
 
 fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
