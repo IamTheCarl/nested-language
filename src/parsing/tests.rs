@@ -27,6 +27,13 @@ fn pretty_read<'a, T>(input: &'a str, function: &dyn Fn(&'a str) -> ParserResult
     }
 }
 
+fn unwrap_constant<'a>(op: NLOperation<'a>) -> OpConstant<'a> {
+    match op {
+        NLOperation::Constant(constant) => constant,
+        _ => panic!("Expected constant.")
+    }
+}
+
 mod root {
     use super::*;
 
@@ -748,13 +755,6 @@ mod root {
 mod executable_blocks {
     use super::*;
 
-    fn unwrap_constant<'a>(op: NLOperation<'a>) -> OpConstant<'a> {
-        match op {
-            NLOperation::Constant(constant) => constant,
-            _ => panic!("Expected constant.")
-        }
-    }
-
     mod constants {
         use super::*;
 
@@ -829,7 +829,7 @@ mod executable_blocks {
                     assert_eq!(constant, 5.5, "Constant had wrong value.");
                     assert_eq!(cast, NLType::None, "Wrong type cast recommendation.");
                 },
-                _ => panic!("Expected integer for constant type."),
+                _ => panic!("Expected float for constant type."),
             }
         }
 
@@ -844,7 +844,7 @@ mod executable_blocks {
                     assert_eq!(constant, 5.5, "Constant had wrong value.");
                     assert_eq!(cast, NLType::F64, "Wrong type cast recommendation.");
                 },
-                _ => panic!("Expected integer for constant type."),
+                _ => panic!("Expected float for constant type."),
             }
         }
 
@@ -1061,10 +1061,6 @@ mod executable_blocks {
         }
     }
 
-    /*mod match_body {
-        use super::*;
-    }*/
-
     mod operators {
         use super::*;
 
@@ -1098,13 +1094,6 @@ mod executable_blocks {
                 }
             }
         }
-
-        /*,
-            BitLeftShift(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-            BitRightShift(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-
-            PropError(Box<NLOperation<'a>>),
-        */
 
         mod comparison {
             use super::*;
@@ -1530,6 +1519,89 @@ mod executable_blocks {
                         panic!("Wrong operation.");
                     }
                 }
+            }
+        }
+    }
+
+    mod if_statements {
+        use super::*;
+
+        fn unwrap_if<'a>(op: NLOperation<'a>) -> IfStatement<'a> {
+            match op {
+                NLOperation::If(op) => op,
+                _ => panic!("Expected if, got {:?}", op)
+            }
+        }
+
+        fn unwrap_boolean<'a>(op: &NLOperation<'a>) -> bool {
+            match op {
+                NLOperation::Constant(op) => {
+                    match op {
+                        OpConstant::Boolean(constant) => {
+                            *constant
+                        },
+                        _ => panic!("Expected boolean for constant type, got: {:?}", op),
+                    }
+                },
+                _=> panic!("Expected constant boolean for if statement, got: {:?}", op)
+            }
+        }
+
+        #[test]
+        fn basic_if() {
+            let code = "if true { false }";
+            let operation = pretty_read(code, &read_operation);
+            let statement = unwrap_if(operation);
+
+            let condition = unwrap_boolean(&statement.condition);
+            let true_block = &statement.true_block;
+            let false_block = &statement.false_block;
+
+            assert_eq!(condition, true, "Wrong condition value read.");
+            assert_eq!(true_block.operations.len(), 1, "Wrong number of operations in true block.");
+            assert_eq!(unwrap_boolean(&true_block.operations[0]), false, "Expected a false boolean in the true block.");
+            assert_eq!(false_block.operations.len(), 0, "Wrong number of operations in false block.");
+        }
+
+        #[test]
+        fn if_else() {
+            let code = "if true { false } else { true }";
+            let operation = pretty_read(code, &read_operation);
+            let statement = unwrap_if(operation);
+
+            let condition = unwrap_boolean(&statement.condition);
+            let true_block = &statement.true_block;
+            let false_block = &statement.false_block;
+
+            assert_eq!(condition, true, "Wrong condition value read.");
+            assert_eq!(true_block.operations.len(), 1, "Wrong number of operations in true block.");
+            assert_eq!(unwrap_boolean(&true_block.operations[0]), false, "Expected a false boolean in the true block.");
+            assert_eq!(false_block.operations.len(), 1, "Wrong number of operations in false block.");
+            assert_eq!(unwrap_boolean(&false_block.operations[0]), true, "Expected a true boolean in the true block.");
+        }
+
+        #[test]
+        fn and_if() {
+            let code = "if true && false {}";
+            let operation = pretty_read(code, &read_operation);
+            let statement = unwrap_if(operation);
+
+            let condition = statement.condition;
+            
+            match *condition {
+                NLOperation::Operator(operator) => {
+                    match operator {
+                        OpOperator::LogicalAnd(op_a, op_b) => {
+                            let op_a = unwrap_boolean(&op_a);
+                            let op_b = unwrap_boolean(&op_b);
+
+                            assert_eq!(op_a, true, "Expected true for op_a");
+                            assert_eq!(op_b, false, "Expected true for ob_b");
+                        },
+                        _ => panic!("Expected logical AND operation, got {:?}", operator)
+                    }
+                },
+                _ => panic!("Expected an operator for if statement condition. Got: {:?}", condition)
             }
         }
     }

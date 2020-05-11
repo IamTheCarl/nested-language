@@ -219,7 +219,7 @@ enum OpOperator<'a> {
     BitLeftShift(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
     BitRightShift(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
 
-    PropError(Box<NLOperation<'a>>),
+    PropError(Box<NLOperation<'a>>), // TODO implement.
 
     ArithmeticMod(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
     ArithmeticAdd(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
@@ -229,12 +229,20 @@ enum OpOperator<'a> {
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
+struct IfStatement<'a> {
+    condition: Box<NLOperation<'a>>,
+    true_block: NLBlock<'a>,
+    false_block: NLBlock<'a>,
+}
+
+#[derive(PartialOrd, PartialEq, Debug)]
 enum NLOperation<'a> {
     Block(NLBlock<'a>),
     Constant(OpConstant<'a>),
     Assign(OpAssignment<'a>),
     Tuple(Vec<NLOperation<'a>>),
     Operator(OpOperator<'a>),
+    If(IfStatement<'a>),
 }
 
 
@@ -427,6 +435,7 @@ fn read_string_constant(input: &str) -> ParserResult<OpConstant> {
 }
 
 fn read_constant(input: &str) -> ParserResult<NLOperation> {
+    let (input, _) = blank(input)?;
     let (input, constant) = alt((read_boolean_constant, read_numerical_constant, read_string_constant))(input)?;
     Ok((input, NLOperation::Constant(constant)))
 }
@@ -480,24 +489,6 @@ fn read_assignment(input: &str) -> ParserResult<NLOperation> {
 
     Ok((input, NLOperation::Assign(assignment)))
 }
-
-/*
-fn read_match_body(input: &str) -> ParserResult<NLMatchBody> {
-
-}
-
-fn read_value_match(input: &str) -> ParserResult<NLOperation> {
-    unimplemented!()
-}
-
-fn read_type_match_first(input: &str) -> ParserResult<NLOperation> {
-    unimplemented!()
-}
-
-fn read_type_match_many(input: &str) -> ParserResult<NLOperation> {
-    unimplemented!()
-}
-*/
 
 fn take_operator_symbol(input: &str) -> ParserResult<&str> {
     fn is_operator_symbol(c: char) -> bool {
@@ -653,6 +644,43 @@ fn read_binary_operator(input: &str) -> ParserResult<NLOperation> {
     }
 }
 
+fn read_if_statement(input: &str) -> ParserResult<NLOperation> {
+    let (input, _) = tag("if")(input)?;
+    let (input, _) = blank(input)?;
+    let (input, condition) =  read_operation(input)?;
+    let (input, _) = blank(input)?;
+    let (input, true_block) = read_code_block(input)?;
+    let (input, _) = blank(input)?;
+    let (input, else_tag) = opt(tag("else"))(input)?;
+
+    let (input, false_block) = if else_tag.is_some() {
+        // We have an else block.
+        let (input, block) = read_code_block(input)?;
+
+        let block = match block {
+            NLOperation::Block(block) => block,
+            _ => panic!("Got something other than a block when it should have been a block.")
+        };
+
+        (input, block)
+    } else {
+        (input, NLBlock {
+            operations: vec![],
+        })
+    };
+
+    let true_block = match true_block {
+        NLOperation::Block(block) => block,
+        _ => panic!("Got something other than a block when it should have been a block.")
+    };
+
+    Ok((input, NLOperation::If(IfStatement {
+        condition: Box::new(condition),
+        true_block,
+        false_block,
+    })))
+}
+
 fn read_code_block(input: &str) -> ParserResult<NLOperation> {
     let (input, _) = blank(input)?;
     let (input, _) = char('{')(input)?;
@@ -672,7 +700,7 @@ fn read_sub_operation(input: &str) -> ParserResult<NLOperation> {
 }
 
 fn read_operation(input: &str) -> ParserResult<NLOperation> {
-    alt((read_code_block, read_tuple, read_assignment, read_binary_operator, read_constant, read_urinary_operator))(input)
+    alt((read_code_block, read_if_statement, read_tuple, read_assignment, read_binary_operator, read_constant, read_urinary_operator))(input)
 }
 
 fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
