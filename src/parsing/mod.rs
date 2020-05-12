@@ -226,6 +226,8 @@ enum OpOperator<'a> {
     ArithmeticSub(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
     ArithmeticMul(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
     ArithmeticDiv(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+
+    Range(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
@@ -305,6 +307,8 @@ fn blank(input: &str) -> ParserResult<()> {
 }
 
 fn is_name(c: char) -> bool {
+    1..5;
+
     match c {
         '_' => true,
         _ => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
@@ -503,7 +507,7 @@ fn read_assignment(input: &str) -> ParserResult<NLOperation> {
 fn take_operator_symbol(input: &str) -> ParserResult<&str> {
     fn is_operator_symbol(c: char) -> bool {
         match c {
-            '=' | '!' | '~' | '|' | '&' | '^' | '%' | '+' | '-' | '*' | '/' | '<' | '>' => true,
+            '=' | '!' | '~' | '|' | '&' | '^' | '%' | '+' | '-' | '*' | '/' | '<' | '>' | '.' => true,
             _ => false,
         }
     }
@@ -639,6 +643,10 @@ fn read_binary_operator(input: &str) -> ParserResult<NLOperation> {
         },
         "*" => {
             let operator = OpOperator::ArithmeticMul(operand_a, operand_b);
+            Ok((input, NLOperation::Operator(operator)))
+        },
+        ".." => {
+            let operator = OpOperator::Range(operand_a, operand_b);
             Ok((input, NLOperation::Operator(operator)))
         },
 

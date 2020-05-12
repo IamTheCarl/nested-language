@@ -1553,6 +1553,25 @@ mod executable_blocks {
                     }
                 }
             }
+
+            #[test]
+            fn range() {
+                let code = "1 .. 2";
+                let operation = pretty_read(code, &read_operation);
+                let operation = unwrap_operator(operation);
+
+                match operation {
+                    OpOperator::Range(a, b) => {
+                        let a = unwrap_constant_number(*a);
+                        let b = unwrap_constant_number(*b);
+                        assert_eq!(a, 1, "Wrong value for constant.");
+                        assert_eq!(b, 2, "Wrong value for constant.");
+                    },
+                    _ => {
+                        panic!("Wrong operation.");
+                    }
+                }
+            }
         }
     }
 
