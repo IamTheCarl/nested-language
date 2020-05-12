@@ -236,6 +236,12 @@ struct IfStatement<'a> {
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
+struct WhileLoop<'a> {
+    condition: Box<NLOperation<'a>>,
+    block: NLBlock<'a>,
+}
+
+#[derive(PartialOrd, PartialEq, Debug)]
 enum NLOperation<'a> {
     Block(NLBlock<'a>),
     Constant(OpConstant<'a>),
@@ -243,6 +249,9 @@ enum NLOperation<'a> {
     Tuple(Vec<NLOperation<'a>>),
     Operator(OpOperator<'a>),
     If(IfStatement<'a>),
+    Loop(NLBlock<'a>),
+    WhileLoop(WhileLoop<'a>),
+    Break,
 }
 
 
@@ -645,6 +654,7 @@ fn read_binary_operator(input: &str) -> ParserResult<NLOperation> {
 }
 
 fn read_if_statement(input: &str) -> ParserResult<NLOperation> {
+    let (input, _) = blank(input)?;
     let (input, _) = tag("if")(input)?;
     let (input, _) = blank(input)?;
     let (input, condition) =  read_operation(input)?;
@@ -681,7 +691,46 @@ fn read_if_statement(input: &str) -> ParserResult<NLOperation> {
     })))
 }
 
-fn read_code_block(input: &str) -> ParserResult<NLOperation> {
+fn read_basic_loop(input: &str) -> ParserResult<NLOperation> {
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("loop")(input)?;
+    let (input, _) = blank(input)?;
+    let (input, block) = read_code_block_raw(input)?;
+
+    Ok((input, NLOperation::Loop(block)))
+}
+
+fn read_while_loop(input: &str) -> ParserResult<NLOperation> {
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("while")(input)?;
+    let (input, _) = blank(input)?;
+    let (input, condition) = read_operation(input)?;
+    let (input, _) = blank(input)?;
+    let (input, block) = read_code_block_raw(input)?;
+
+    Ok((input, NLOperation::WhileLoop(WhileLoop {
+        condition: Box::new(condition),
+        block,
+    })))
+}
+
+fn read_break_keyword(input: &str) -> ParserResult<NLOperation> {
+    let (input, break_keyword) = opt(tag("break"))(input)?;
+
+    if break_keyword.is_some() {
+        Ok((input, NLOperation::Break))
+    } else {
+        let vek = VerboseErrorKind::Context("This is not a break operation.");
+
+        let ve = VerboseError {
+            errors: vec![(input, vek)]
+        };
+
+        Err(NomErr::Error(ve))
+    }
+}
+
+fn read_code_block_raw(input: &str) -> ParserResult<NLBlock> {
     let (input, _) = blank(input)?;
     let (input, _) = char('{')(input)?;
 
@@ -690,9 +739,15 @@ fn read_code_block(input: &str) -> ParserResult<NLOperation> {
     let (input, _) = blank(input)?;
     let (input, _) = char('}')(input)?;
 
-    Ok((input, NLOperation::Block(NLBlock {
+    Ok((input, NLBlock {
         operations,
-    })))
+    }))
+}
+
+fn read_code_block(input: &str) -> ParserResult<NLOperation> {
+    let (input, block) = read_code_block_raw(input)?;
+
+    Ok((input, NLOperation::Block(block)))
 }
 
 fn read_sub_operation(input: &str) -> ParserResult<NLOperation> {
@@ -700,7 +755,7 @@ fn read_sub_operation(input: &str) -> ParserResult<NLOperation> {
 }
 
 fn read_operation(input: &str) -> ParserResult<NLOperation> {
-    alt((read_code_block, read_if_statement, read_tuple, read_assignment, read_binary_operator, read_constant, read_urinary_operator))(input)
+    alt((read_code_block, read_if_statement, read_break_keyword, read_basic_loop, read_while_loop, read_tuple, read_assignment, read_binary_operator, read_constant, read_urinary_operator))(input)
 }
 
 fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {

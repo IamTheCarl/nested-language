@@ -34,6 +34,20 @@ fn unwrap_constant<'a>(op: NLOperation<'a>) -> OpConstant<'a> {
     }
 }
 
+fn unwrap_boolean<'a>(op: &NLOperation<'a>) -> bool {
+    match op {
+        NLOperation::Constant(op) => {
+            match op {
+                OpConstant::Boolean(constant) => {
+                    *constant
+                },
+                _ => panic!("Expected boolean for constant type, got: {:?}", op),
+            }
+        },
+        _=> panic!("Expected constant boolean for if statement, got: {:?}", op)
+    }
+}
+
 mod root {
     use super::*;
 
@@ -1533,20 +1547,6 @@ mod executable_blocks {
             }
         }
 
-        fn unwrap_boolean<'a>(op: &NLOperation<'a>) -> bool {
-            match op {
-                NLOperation::Constant(op) => {
-                    match op {
-                        OpConstant::Boolean(constant) => {
-                            *constant
-                        },
-                        _ => panic!("Expected boolean for constant type, got: {:?}", op),
-                    }
-                },
-                _=> panic!("Expected constant boolean for if statement, got: {:?}", op)
-            }
-        }
-
         #[test]
         fn basic_if() {
             let code = "if true { false }";
@@ -1602,6 +1602,80 @@ mod executable_blocks {
                     }
                 },
                 _ => panic!("Expected an operator for if statement condition. Got: {:?}", condition)
+            }
+        }
+    }
+
+    mod loops {
+        use super::*;
+
+        #[test]
+        fn basic_loop() {
+            let code = "loop { true }";
+            let operation = pretty_read(code, &read_operation);
+
+            match operation {
+                NLOperation::Loop(block) => {
+                    assert_eq!(block.operations.len(), 1, "Wrong number of operations in block.");
+                    assert_eq!(unwrap_boolean(&block.operations[0]), true, "Expected true for boolean value in block.");
+                },
+                _ => panic!("Expected loop, got: {:?}", operation)
+            }
+        }
+
+        #[test]
+        fn while_loop() {
+            let code = "while true { false }";
+            let operation = pretty_read(code, &read_operation);
+
+            match operation {
+                NLOperation::WhileLoop(while_loop) => {
+                    assert_eq!(unwrap_boolean(&while_loop.condition), true, "Expected true value for condition.");
+
+                    assert_eq!(while_loop.block.operations.len(), 1, "Wrong number of operations in block.");
+                    assert_eq!(unwrap_boolean(&while_loop.block.operations[0]), false, "Expected false for boolean value in block.");
+                },
+                _ => panic!("Expected loop, got: {:?}", operation)
+            }
+        }
+
+        #[test]
+        fn while_loop_with_and() {
+            let code = "while true && false { false }";
+            let operation = pretty_read(code, &read_operation);
+
+            match operation {
+                NLOperation::WhileLoop(while_loop) => {
+                    match *while_loop.condition {
+                        NLOperation::Operator(operator) => {
+                            match operator {
+                                OpOperator::LogicalAnd(left, right) => {
+                                    assert_eq!(unwrap_boolean(&left), true, "Expected true for left operand of and.");
+                                    assert_eq!(unwrap_boolean(&right), false, "Expected false for right operand of and.");
+                                },
+                                _ => panic!("Expected logical and operation, got {:?}", operator)
+                            }
+                        },
+                        _ => panic!("Expected operation for while loop condition, got {:?}", while_loop.condition)
+                    }
+
+                    assert_eq!(while_loop.block.operations.len(), 1, "Wrong number of operations in block.");
+                    assert_eq!(unwrap_boolean(&while_loop.block.operations[0]), false, "Expected false for boolean value in block.");
+                },
+                _ => panic!("Expected loop, got: {:?}", operation)
+            }
+        }
+
+        #[test]
+        fn break_keyword() {
+            let code = "break";
+            let operation = pretty_read(code, &read_operation);
+
+            match operation {
+                NLOperation::Break => {
+                    // We pass. That's it.
+                },
+                _ => panic!("Expected break operation, got {:?}", operation)
             }
         }
     }
