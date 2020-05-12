@@ -196,38 +196,38 @@ struct OpAssignment<'a> {
 
 #[derive(PartialOrd, PartialEq, Debug)]
 enum OpOperator<'a> {
-    CompareEqual(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    CompareNotEqual(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    CompareGreater(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    CompareLess(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    CompareGreaterEqual(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    CompareLessEqual(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    CompareEqual((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    CompareNotEqual((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    CompareGreater((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    CompareLess((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    CompareGreaterEqual((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    CompareLessEqual((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
 
     LogicalNegate(Box<NLOperation<'a>>),
 
-    LogicalAnd(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    LogicalOr(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    LogicalXor(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    LogicalAnd((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    LogicalOr((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    LogicalXor((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
 
-    BitAnd(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    BitOr(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    BitXor(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    BitAnd((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    BitOr((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    BitXor((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
 
     ArithmeticNegate(Box<NLOperation<'a>>),
     BitNegate(Box<NLOperation<'a>>),
 
-    BitLeftShift(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    BitRightShift(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    BitLeftShift((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    BitRightShift((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
 
     PropError(Box<NLOperation<'a>>), // TODO implement.
 
-    ArithmeticMod(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    ArithmeticAdd(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    ArithmeticSub(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    ArithmeticMul(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
-    ArithmeticDiv(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    ArithmeticMod((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    ArithmeticAdd((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    ArithmeticSub((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    ArithmeticMul((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
+    ArithmeticDiv((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
 
-    Range(Box<NLOperation<'a>>, Box<NLOperation<'a>>),
+    Range((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
@@ -572,89 +572,89 @@ fn read_binary_operator(input: &str) -> ParserResult<NLOperation> {
     match operator {
         // Logical operators.
         "==" => {
-            let operator = OpOperator::CompareEqual(operand_a, operand_b);
+            let operator = OpOperator::CompareEqual((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "!=" => {
-            let operator = OpOperator::CompareNotEqual(operand_a, operand_b);
+            let operator = OpOperator::CompareNotEqual((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         // TODO create formal errors for => and =< operators to help the noobs.
         ">=" => {
-            let operator = OpOperator::CompareGreaterEqual(operand_a, operand_b);
+            let operator = OpOperator::CompareGreaterEqual((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "<=" => {
-            let operator = OpOperator::CompareLessEqual(operand_a, operand_b);
+            let operator = OpOperator::CompareLessEqual((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
 
         ">" => {
-            let operator = OpOperator::CompareGreater(operand_a, operand_b);
+            let operator = OpOperator::CompareGreater((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "<" => {
-            let operator = OpOperator::CompareLess(operand_a, operand_b);
+            let operator = OpOperator::CompareLess((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "&&" => {
-            let operator = OpOperator::LogicalAnd(operand_a, operand_b);
+            let operator = OpOperator::LogicalAnd((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "||" => {
-            let operator = OpOperator::LogicalOr(operand_a, operand_b);
+            let operator = OpOperator::LogicalOr((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "^^" => {
-            let operator = OpOperator::LogicalXor(operand_a, operand_b);
+            let operator = OpOperator::LogicalXor((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
 
         // Bitwise operators.
         "&" => {
-            let operator = OpOperator::BitAnd(operand_a, operand_b);
+            let operator = OpOperator::BitAnd((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "|" => {
-            let operator = OpOperator::BitOr(operand_a, operand_b);
+            let operator = OpOperator::BitOr((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "^" => {
-            let operator = OpOperator::BitXor(operand_a, operand_b);
+            let operator = OpOperator::BitXor((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "<<" => {
-            let operator = OpOperator::BitLeftShift(operand_a, operand_b);
+            let operator = OpOperator::BitLeftShift((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         ">>" => {
-            let operator = OpOperator::BitRightShift(operand_a, operand_b);
+            let operator = OpOperator::BitRightShift((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
 
         // Arithmetic operators.
         "+" => {
-            let operator = OpOperator::ArithmeticAdd(operand_a, operand_b);
+            let operator = OpOperator::ArithmeticAdd((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "-" => {
-            let operator = OpOperator::ArithmeticSub(operand_a, operand_b);
+            let operator = OpOperator::ArithmeticSub((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "%" => {
-            let operator = OpOperator::ArithmeticMod(operand_a, operand_b);
+            let operator = OpOperator::ArithmeticMod((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "/" => {
-            let operator = OpOperator::ArithmeticDiv(operand_a, operand_b);
+            let operator = OpOperator::ArithmeticDiv((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         "*" => {
-            let operator = OpOperator::ArithmeticMul(operand_a, operand_b);
+            let operator = OpOperator::ArithmeticMul((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
         ".." => {
-            let operator = OpOperator::Range(operand_a, operand_b);
+            let operator = OpOperator::Range((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
         },
 
