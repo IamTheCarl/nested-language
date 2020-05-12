@@ -905,6 +905,23 @@ mod executable_blocks {
         }
     }
 
+    mod variables {
+        use super::*;
+
+        #[test]
+        fn variable_access() {
+            let code = "bah";
+            let operation = pretty_read(code, &read_operation);
+
+            match operation {
+                NLOperation::VariableAccess(access) => {
+                    assert_eq!(access.name, "bah", "Variable had wrong name.");
+                },
+                _ => panic!("Expected variable access operation, got {:?}", operation)
+            }
+        }
+    }
+
     mod tuples {
         use super::*;
 
@@ -1077,6 +1094,8 @@ mod executable_blocks {
 
     mod operators {
         use super::*;
+
+        // TODO test chained operators.
 
         fn unwrap_operator<'a>(op: NLOperation<'a>) -> OpOperator<'a> {
             match op {

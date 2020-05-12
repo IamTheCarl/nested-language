@@ -246,6 +246,7 @@ enum NLOperation<'a> {
     Block(NLBlock<'a>),
     Constant(OpConstant<'a>),
     Assign(OpAssignment<'a>),
+    VariableAccess(OpVariable<'a>),
     Tuple(Vec<NLOperation<'a>>),
     Operator(OpOperator<'a>),
     If(IfStatement<'a>),
@@ -730,6 +731,15 @@ fn read_break_keyword(input: &str) -> ParserResult<NLOperation> {
     }
 }
 
+fn read_variable_access(input: &str) -> ParserResult<NLOperation> {
+    let (input, _) = blank(input)?;
+    let (input, name) = read_variable_name(input)?;
+
+    Ok((input, NLOperation::VariableAccess(OpVariable {
+        name
+    })))
+}
+
 fn read_code_block_raw(input: &str) -> ParserResult<NLBlock> {
     let (input, _) = blank(input)?;
     let (input, _) = char('{')(input)?;
@@ -751,11 +761,11 @@ fn read_code_block(input: &str) -> ParserResult<NLOperation> {
 }
 
 fn read_sub_operation(input: &str) -> ParserResult<NLOperation> {
-    alt((read_code_block, read_tuple, read_assignment, read_constant, read_urinary_operator))(input)
+    alt((read_code_block, read_tuple, read_assignment, read_constant, read_urinary_operator, read_variable_access))(input)
 }
 
 fn read_operation(input: &str) -> ParserResult<NLOperation> {
-    alt((read_code_block, read_if_statement, read_break_keyword, read_basic_loop, read_while_loop, read_tuple, read_assignment, read_binary_operator, read_constant, read_urinary_operator))(input)
+    alt((read_code_block, read_if_statement, read_break_keyword, read_basic_loop, read_while_loop, read_tuple, read_assignment, read_binary_operator, read_constant, read_urinary_operator, read_variable_access))(input)
 }
 
 fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
