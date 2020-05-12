@@ -244,6 +244,13 @@ struct WhileLoop<'a> {
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
+struct ForLoop<'a> {
+    variable: OpVariable<'a>,
+    iterator: Box<NLOperation<'a>>,
+    block: NLBlock<'a>,
+}
+
+#[derive(PartialOrd, PartialEq, Debug)]
 enum NLOperation<'a> {
     Block(NLBlock<'a>),
     Constant(OpConstant<'a>),
@@ -254,6 +261,7 @@ enum NLOperation<'a> {
     If(IfStatement<'a>),
     Loop(NLBlock<'a>),
     WhileLoop(WhileLoop<'a>),
+    ForLoop(ForLoop<'a>),
     Break,
 }
 
@@ -723,6 +731,25 @@ fn read_while_loop(input: &str) -> ParserResult<NLOperation> {
     })))
 }
 
+fn read_for_loop(input: &str) -> ParserResult<NLOperation> {
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("for")(input)?;
+    let (input, _) = blank(input)?;
+    let (input, variable) = read_variable_access_raw(input)?;
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("in")(input)?;
+    let (input, _) = blank(input)?;
+    let (input, iterator) = read_operation(input)?;
+    let (input, _) = blank(input)?;
+    let (input, block) = read_code_block_raw(input)?;
+
+    Ok((input, NLOperation::ForLoop(ForLoop {
+        variable,
+        iterator: Box::new(iterator),
+        block,
+    })))
+}
+
 fn read_break_keyword(input: &str) -> ParserResult<NLOperation> {
     let (input, break_keyword) = opt(tag("break"))(input)?;
 
@@ -739,13 +766,19 @@ fn read_break_keyword(input: &str) -> ParserResult<NLOperation> {
     }
 }
 
-fn read_variable_access(input: &str) -> ParserResult<NLOperation> {
+fn read_variable_access_raw(input: &str) -> ParserResult<OpVariable> {
     let (input, _) = blank(input)?;
     let (input, name) = read_variable_name(input)?;
 
-    Ok((input, NLOperation::VariableAccess(OpVariable {
+    Ok((input, OpVariable {
         name
-    })))
+    }))
+}
+
+fn read_variable_access(input: &str) -> ParserResult<NLOperation> {
+    let (input, variable) = read_variable_access_raw(input)?;
+
+    Ok((input, NLOperation::VariableAccess(variable)))
 }
 
 fn read_code_block_raw(input: &str) -> ParserResult<NLBlock> {
@@ -773,7 +806,20 @@ fn read_sub_operation(input: &str) -> ParserResult<NLOperation> {
 }
 
 fn read_operation(input: &str) -> ParserResult<NLOperation> {
-    alt((read_code_block, read_if_statement, read_break_keyword, read_basic_loop, read_while_loop, read_tuple, read_assignment, read_binary_operator, read_constant, read_urinary_operator, read_variable_access))(input)
+    alt((
+        read_code_block,
+        read_if_statement,
+        read_break_keyword,
+        read_basic_loop,
+        read_while_loop,
+        read_for_loop,
+        read_tuple,
+        read_assignment,
+        read_binary_operator,
+        read_constant,
+        read_urinary_operator,
+        read_variable_access
+    ))(input)
 }
 
 fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {

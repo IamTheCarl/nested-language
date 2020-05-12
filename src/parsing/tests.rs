@@ -1705,6 +1705,22 @@ mod executable_blocks {
         }
 
         #[test]
+        fn for_loop() {
+            let code = "for bah in false { true }";
+            let operation = pretty_read(code, &read_operation);
+
+            match operation {
+                NLOperation::ForLoop(for_loop) => {
+                    assert_eq!(for_loop.variable.name, "bah", "Wrong name given to variable.");
+                    assert_eq!(unwrap_boolean(&for_loop.iterator), false, "Expected false for range.");
+                    assert_eq!(for_loop.block.operations.len(), 1, "Wrong number of operations in block.");
+                    assert_eq!(unwrap_boolean(&for_loop.block.operations[0]), true, "Expected true for boolean value in block.");
+                },
+                _ => panic!("Expected for loop, got {:?}", operation)
+            }
+        }
+
+        #[test]
         fn break_keyword() {
             let code = "break";
             let operation = pretty_read(code, &read_operation);
