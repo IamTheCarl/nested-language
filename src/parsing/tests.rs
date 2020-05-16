@@ -1023,6 +1023,30 @@ mod executable_blocks {
         }
 
         #[test]
+        fn single_variable_to_constant_scoped() {
+            let code = "let numbers.five = 5;";
+            let (_, operation) = read_assignment(code).unwrap();
+
+            match operation {
+                NLOperation::Assign(assign) => {
+                    assert_eq!(assign.is_new, true, "Assignment should have been  new.");
+                    assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
+                    assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
+
+                    assert_eq!(assign.assignment,
+                               Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
+
+                    let variable = &assign.to_assign[0];
+
+                    assert_eq!(variable.name, "numbers.five", "Wrong name given to variable.");
+
+
+                },
+                _ => panic!("Expected assignment operation."),
+            };
+        }
+
+        #[test]
         fn single_variable_to_constant_with_type_spec() {
             let code = "let five: i32 = 5;";
             let (_, operation) = read_assignment(code).unwrap();
@@ -1039,6 +1063,30 @@ mod executable_blocks {
                     let variable = &assign.to_assign[0];
 
                     assert_eq!(variable.name, "five", "Wrong name given to variable.");
+
+
+                },
+                _ => panic!("Expected assignment operation."),
+            };
+        }
+
+        #[test]
+        fn single_variable_to_constant_with_type_spec_scoped() {
+            let code = "let numbers.five: i32 = 5;";
+            let (_, operation) = read_assignment(code).unwrap();
+
+            match operation {
+                NLOperation::Assign(assign) => {
+                    assert_eq!(assign.is_new, true, "Assignment should have been  new.");
+                    assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
+                    assert_eq!(assign.type_assignment, NLType::I32, "Unexpected type specified.");
+
+                    assert_eq!(assign.assignment,
+                               Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
+
+                    let variable = &assign.to_assign[0];
+
+                    assert_eq!(variable.name, "numbers.five", "Wrong name given to variable.");
 
 
                 },
@@ -1079,6 +1127,38 @@ mod executable_blocks {
         }
 
         #[test]
+        fn assign_tuple_scoped() {
+            let code = "let (numbers.fore, numbers.five) = (4, 5);";
+            let (_, operation) = read_assignment(code).unwrap();
+
+            match operation {
+                NLOperation::Assign(assign) => {
+                    assert_eq!(assign.is_new, true, "Assignment should have been  new.");
+                    assert_eq!(assign.to_assign.len(), 2, "Wrong number of values being assigned.");
+                    assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
+
+                    assert_eq!(assign.assignment,
+                               Box::new(NLOperation::Tuple(vec![
+                                    NLOperation::Constant(OpConstant::Integer(4, NLType::None)),
+                                    NLOperation::Constant(OpConstant::Integer(5, NLType::None))
+                               ])),
+                               "Wrong assignment."
+                    );
+
+
+                    let variable = &assign.to_assign[0];
+                    assert_eq!(variable.name, "numbers.fore", "Wrong name given to variable.");
+
+                    let variable = &assign.to_assign[1];
+                    assert_eq!(variable.name, "numbers.five", "Wrong name given to variable.");
+
+
+                },
+                _ => panic!("Expected assignment operation."),
+            };
+        }
+
+        #[test]
         fn assign_no_define() {
             let code = "five = 5;";
             let (_, operation) = read_assignment(code).unwrap();
@@ -1095,6 +1175,30 @@ mod executable_blocks {
                     let variable = &assign.to_assign[0];
 
                     assert_eq!(variable.name, "five", "Wrong name given to variable.");
+
+
+                },
+                _ => panic!("Expected assignment operation."),
+            };
+        }
+
+        #[test]
+        fn assign_no_define_scoped() {
+            let code = "numbers.five = 5;";
+            let (_, operation) = read_assignment(code).unwrap();
+
+            match operation {
+                NLOperation::Assign(assign) => {
+                    assert_eq!(assign.is_new, false, "Assignment should have been  new.");
+                    assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
+                    assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
+
+                    assert_eq!(assign.assignment,
+                               Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
+
+                    let variable = &assign.to_assign[0];
+
+                    assert_eq!(variable.name, "numbers.five", "Wrong name given to variable.");
 
 
                 },
@@ -1530,5 +1634,13 @@ mod executable_blocks {
                 _ => panic!("Expected break operation, got {:?}", operation)
             }
         }
+    }
+    
+    mod match_statements {
+
+    }
+
+    mod function_calls {
+
     }
 }
