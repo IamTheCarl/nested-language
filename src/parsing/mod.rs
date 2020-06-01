@@ -53,6 +53,7 @@ pub enum NLType<'a> {
     OwnedTrait(&'a str),
     ReferencedTrait(&'a str),
     MutableReferencedTrait(&'a str),
+    Enum(&'a str),
     SelfReference,
     MutableSelfReference,
 }
@@ -67,6 +68,7 @@ impl<'a> NLStructVariable<'a> {
     pub fn get_type(&self) -> &NLType { &self.my_type }
 }
 
+#[derive(PartialOrd, PartialEq, Debug)]
 pub struct NLArgument<'a> {
     name: &'a str,
     nl_type: NLType<'a>,
@@ -167,23 +169,62 @@ impl<'a> NLImplementation<'a> {
     pub fn get_implementors(&self) -> &Vec<NLImplementor> { &self.implementors }
 }
 
+#[derive(PartialOrd, PartialEq, Debug)]
+pub struct EnumVariant<'a> {
+    name: &'a str,
+    arguments: Vec<NLArgument<'a>>
+}
+
+impl <'a> EnumVariant<'a> {
+    fn get_name(&self) -> &str {
+        self.name
+    }
+
+    fn get_arguments(&self) -> &Vec<NLArgument<'a>> {
+        &self.arguments
+    }
+}
+
+pub struct NLEnum<'a> {
+    name: &'a str,
+    variants: Vec<EnumVariant<'a>>,
+}
+
+impl<'a> NLEnum<'a> {
+    fn get_name(&self) -> &str {
+        self.name
+    }
+
+    fn get_variants(&self) -> &Vec<EnumVariant> {
+        &self.variants
+    }
+}
+
 enum RootDeceleration<'a> {
     Struct(NLStruct<'a>),
     Trait(NLTrait<'a>),
     Function(NLFunction<'a>),
+    Enum(NLEnum<'a>),
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
 enum OpConstant<'a> {
     Boolean(bool),
-    Integer(i64, NLType<'a>),
+    Integer(i128, NLType<'a>),
     Float(f64, NLType<'a>),
     String(&'a str),
+    // TODO add support for defining a constant enum.
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
 struct OpVariable<'a> {
     name: &'a str,
+}
+
+impl<'a> OpVariable<'a> {
+    pub fn get_name(&self) -> &str {
+        self.name
+    }
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
@@ -251,6 +292,33 @@ struct ForLoop<'a> {
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
+struct MatchEnumBranch<'a> {
+    nl_enum: &'a str,
+    variant: &'a str,
+    variables: Vec<&'a str>,
+}
+
+#[derive(PartialOrd, PartialEq, Debug)]
+enum MatchBranch<'a> {
+    Enum(MatchEnumBranch<'a>),
+    Constant(OpConstant<'a>),
+    Range((i128, i128)),
+    AllOther,
+}
+
+#[derive(PartialOrd, PartialEq, Debug)]
+struct Match<'a> {
+    input: Box<NLOperation<'a>>,
+    branches: Vec<(MatchBranch<'a>, NLOperation<'a>)>,
+}
+
+#[derive(PartialOrd, PartialEq, Debug)]
+struct FunctionCall<'a> {
+    path: &'a str,
+    arguments: Vec<&'a str>,
+}
+
+#[derive(PartialOrd, PartialEq, Debug)]
 enum NLOperation<'a> {
     Block(NLBlock<'a>),
     Constant(OpConstant<'a>),
@@ -263,6 +331,8 @@ enum NLOperation<'a> {
     WhileLoop(WhileLoop<'a>),
     ForLoop(ForLoop<'a>),
     Break,
+    Match(Match<'a>),
+    FunctionCall(FunctionCall<'a>),
 }
 
 
@@ -271,6 +341,7 @@ pub struct NLFile<'a> {
     structs: Vec<NLStruct<'a>>,
     traits: Vec<NLTrait<'a>>,
     functions: Vec<NLFunction<'a>>,
+    enums: Vec<NLEnum<'a>>,
 }
 
 impl<'a> NLFile<'a> {
@@ -278,6 +349,7 @@ impl<'a> NLFile<'a> {
     pub fn get_structs(&self) -> &Vec<NLStruct> { &self.structs }
     pub fn get_traits(&self) -> &Vec<NLTrait> { &self.traits }
     pub fn get_functions(&self) -> &Vec<NLFunction> { &self.functions }
+    pub fn get_enums(&self) -> &Vec<NLEnum> { &self.enums }
 }
 
 #[derive(Debug)]
@@ -439,7 +511,7 @@ fn read_numerical_constant(input: &str) -> ParserResult<OpConstant> {
     };
 
     if !number.contains(".") {
-        let (_, value) = parse_integer::<i64>(number)?;
+        let (_, value) = parse_integer::<i128>(number)?;
         Ok((input, OpConstant::Integer(value, cast)))
     } else {
         // Has to be a floating point number.
@@ -1306,6 +1378,7 @@ fn parse_file_root(input: &str) -> ParserResult<NLFile> {
         structs: vec![],
         traits: vec![],
         functions: vec![],
+        enums: vec![],
     };
 
     if !input.is_empty() {
@@ -1322,6 +1395,9 @@ fn parse_file_root(input: &str) -> ParserResult<NLFile> {
                 RootDeceleration::Function(nl_func) => {
                     file.functions.push(nl_func);
                 },
+                RootDeceleration::Enum(nl_enum) => {
+                    file.enums.push(nl_enum);
+                }
             }
         }
 

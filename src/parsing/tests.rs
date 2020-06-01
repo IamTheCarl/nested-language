@@ -47,7 +47,7 @@ fn unwrap_constant_boolean<'a>(op: &NLOperation<'a>) -> bool {
     }
 }
 
-fn unwrap_constant_number(op: &NLOperation) -> i64 {
+fn unwrap_constant_number(op: &NLOperation) -> i128 {
     let constant = unwrap_to!(op => NLOperation::Constant);
     match constant {
         OpConstant::Integer(value, _) => {
@@ -773,6 +773,185 @@ mod root {
             let arg = &setter.args[0];
             assert_eq!(arg.name, "value", "Variable did not have expected name.");
             assert_eq!(arg.nl_type, NLType::I32, "Variable did not have expected type.");
+        }
+    }
+
+    mod variant_enum {
+        use super::*;
+
+        #[test]
+        fn empty() {
+            let code = "enum MyVariant {}";
+            let file = parse_string(code, "virtual_file").unwrap();
+            let enums = file.get_enums();
+
+            assert_eq!(enums.len(), 1);
+
+            let nl_enum = &enums[0];
+            assert_eq!(nl_enum.get_name(), "MyVariant");
+            assert_eq!(nl_enum.get_variants().len(), 0);
+        }
+
+        #[test]
+        fn one_variant() {
+            let code = "enum MyVariant { One };";
+            let file = parse_string(code, "virtual_file").unwrap();
+            let enums = file.get_enums();
+
+            assert_eq!(enums.len(), 1);
+
+            let nl_enum = &enums[0];
+            assert_eq!(nl_enum.get_name(), "MyVariant");
+
+            let variants = nl_enum.get_variants();
+            assert_eq!(variants.len(), 1);
+
+            let variant = &variants[0];
+            assert_eq!(variant.name, "One");
+            assert_eq!(variant.get_arguments().len(), 0);
+        }
+
+        #[test]
+        fn two_variant() {
+            let code = "enum MyVariant { One, Two };";
+            let file = parse_string(code, "virtual_file").unwrap();
+            let enums = file.get_enums();
+
+            assert_eq!(enums.len(), 1);
+
+            let nl_enum = &enums[0];
+            assert_eq!(nl_enum.get_name(), "MyVariant");
+
+            let variants = nl_enum.get_variants();
+            assert_eq!(variants.len(), 2);
+
+            let variant = &variants[0];
+            assert_eq!(variant.name, "One");
+            assert_eq!(variant.get_arguments().len(), 0);
+
+            let variant = &variants[1];
+            assert_eq!(variant.name, "Two");
+            assert_eq!(variant.get_arguments().len(), 0);
+        }
+
+        #[test]
+        fn one_variant_lazy_comma() {
+            let code = "enum MyVariant { One, Two, };";
+            let file = parse_string(code, "virtual_file").unwrap();
+            let enums = file.get_enums();
+
+            assert_eq!(enums.len(), 1);
+
+            let nl_enum = &enums[0];
+            assert_eq!(nl_enum.get_name(), "MyVariant");
+
+            let variants = nl_enum.get_variants();
+            assert_eq!(variants.len(), 2);
+
+            let variant = &variants[0];
+            assert_eq!(variant.name, "One");
+            assert_eq!(variant.get_arguments().len(), 0);
+
+            let variant = &variants[1];
+            assert_eq!(variant.name, "Two");
+            assert_eq!(variant.get_arguments().len(), 0);
+        }
+
+        #[test]
+        fn one_variant_single_container() {
+            let code = "enum MyVariant { One(a: A), };";
+            let file = parse_string(code, "virtual_file").unwrap();
+            let enums = file.get_enums();
+
+            assert_eq!(enums.len(), 1);
+
+            let nl_enum = &enums[0];
+            assert_eq!(nl_enum.get_name(), "MyVariant");
+
+            let variants = nl_enum.get_variants();
+            assert_eq!(variants.len(), 1);
+
+            let variant = &variants[0];
+            assert_eq!(variant.name, "One");
+
+            let arguments = variant.get_arguments();
+            assert_eq!(arguments.len(), 1);
+
+            let argument = &arguments[0];
+            assert_eq!(argument.get_name(), "a");
+            assert_eq!(*unwrap_to!(argument.get_type() => NLType::OwnedStruct), "A");
+        }
+
+        #[test]
+        fn one_variant_double_container() {
+            let code = "enum MyVariant { One(a: A, b: B), };";
+            let file = parse_string(code, "virtual_file").unwrap();
+            let enums = file.get_enums();
+
+            assert_eq!(enums.len(), 1);
+
+            let nl_enum = &enums[0];
+            assert_eq!(nl_enum.get_name(), "MyVariant");
+
+            let variants = nl_enum.get_variants();
+            assert_eq!(variants.len(), 1);
+
+            let variant = &variants[0];
+            assert_eq!(variant.name, "One");
+
+            let arguments = variant.get_arguments();
+            assert_eq!(arguments.len(), 2);
+
+            let argument = &arguments[0];
+            assert_eq!(argument.get_name(), "a");
+            assert_eq!(*unwrap_to!(argument.get_type() => NLType::OwnedStruct), "A");
+
+            let argument = &arguments[1];
+            assert_eq!(argument.get_name(), "b");
+            assert_eq!(*unwrap_to!(argument.get_type() => NLType::OwnedStruct), "B");
+        }
+
+        #[test]
+        fn two_variant_double_container() {
+            let code = "enum MyVariant { One(a: A, b: B), Two(c: C, d: D), };";
+            let file = parse_string(code, "virtual_file").unwrap();
+            let enums = file.get_enums();
+
+            assert_eq!(enums.len(), 1);
+
+            let nl_enum = &enums[0];
+            assert_eq!(nl_enum.get_name(), "MyVariant");
+
+            let variants = nl_enum.get_variants();
+            assert_eq!(variants.len(), 2);
+
+            let variant = &variants[0];
+            assert_eq!(variant.name, "One");
+
+            let arguments = variant.get_arguments();
+            assert_eq!(arguments.len(), 2);
+
+            let argument = &arguments[0];
+            assert_eq!(argument.get_name(), "a");
+            assert_eq!(*unwrap_to!(argument.get_type() => NLType::OwnedStruct), "A");
+
+            let argument = &arguments[1];
+            assert_eq!(argument.get_name(), "b");
+            assert_eq!(*unwrap_to!(argument.get_type() => NLType::OwnedStruct), "B");
+
+            let variant = &variants[1];
+            assert_eq!(variant.name, "Two");
+
+            let arguments = variant.get_arguments();
+            assert_eq!(arguments.len(), 2);
+
+            let argument = &arguments[0];
+            assert_eq!(argument.get_name(), "c");
+            assert_eq!(*unwrap_to!(argument.get_type() => NLType::OwnedStruct), "C");
+
+            let argument = &arguments[1];
+            assert_eq!(argument.get_name(), "d");
+            assert_eq!(*unwrap_to!(argument.get_type() => NLType::OwnedStruct), "D");
         }
     }
 }
@@ -1635,12 +1814,263 @@ mod executable_blocks {
             }
         }
     }
-    
-    mod match_statements {
 
+    mod match_statements {
+        use super::*;
+
+        #[test]
+        fn basic_match() {
+            let code = "match variable {}";
+            let operation = pretty_read(code, &read_operation);
+            let nl_match = unwrap_to!(operation => NLOperation::Match);
+
+            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+            assert_eq!(nl_match.branches.len(), 0);
+        }
+
+        #[test]
+        fn one_branch() {
+            let code = "match variable { Enum::One => 0, }";
+            let operation = pretty_read(code, &read_operation);
+            let nl_match = unwrap_to!(operation => NLOperation::Match);
+
+            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+
+            let branches = &nl_match.branches;
+            assert_eq!(branches.len(), 1);
+
+            let (branch, operation) = &branches[0];
+            let branch = unwrap_to!(branch => MatchBranch::Enum);
+            assert_eq!(branch.nl_enum, "Enum");
+            assert_eq!(branch.variant, "One");
+
+            assert_eq!(unwrap_constant_number(operation), 0);
+
+            assert_eq!(branch.variables.len(), 0);
+        }
+
+        #[test]
+        fn one_branch_no_comma() {
+            let code = "match variable { Enum::One => 0 }";
+            let operation = pretty_read(code, &read_operation);
+            let nl_match = unwrap_to!(operation => NLOperation::Match);
+
+            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+
+            let branches = &nl_match.branches;
+            assert_eq!(branches.len(), 1);
+
+            let (branch, operation) = &branches[0];
+            let branch = unwrap_to!(branch => MatchBranch::Enum);
+            assert_eq!(branch.nl_enum, "Enum");
+            assert_eq!(branch.variant, "One");
+
+            assert_eq!(unwrap_constant_number(operation), 0);
+
+            assert_eq!(branch.variables.len(), 0);
+        }
+
+        #[test]
+        fn one_branch_one_variable() {
+            let code = "match variable { Enum::One(a) => 0, }";
+            let operation = pretty_read(code, &read_operation);
+            let nl_match = unwrap_to!(operation => NLOperation::Match);
+
+            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+
+            let branches = &nl_match.branches;
+            assert_eq!(branches.len(), 1);
+
+            let (branch, operation) = &branches[0];
+            let branch = unwrap_to!(branch => MatchBranch::Enum);
+            assert_eq!(branch.nl_enum, "Enum");
+            assert_eq!(branch.variant, "One");
+
+            assert_eq!(unwrap_constant_number(operation), 0);
+
+            let variables = &branch.variables;
+            assert_eq!(variables.len(), 1);
+            assert_eq!(variables[0], "a");
+        }
+
+        #[test]
+        fn one_branch_two_variable() {
+            let code = "match variable { Enum::One(a, b) => 0, }";
+            let operation = pretty_read(code, &read_operation);
+            let nl_match = unwrap_to!(operation => NLOperation::Match);
+
+            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+
+            let branches = &nl_match.branches;
+            assert_eq!(branches.len(), 1);
+
+            let (branch, operation) = &branches[0];
+            let branch = unwrap_to!(branch => MatchBranch::Enum);
+            assert_eq!(branch.nl_enum, "Enum");
+            assert_eq!(branch.variant, "One");
+
+            assert_eq!(unwrap_constant_number(operation), 0);
+
+            let variables = &branch.variables;
+            assert_eq!(variables.len(), 2);
+            assert_eq!(variables[0], "a");
+            assert_eq!(variables[1], "b");
+        }
+
+        #[test]
+        fn two_branch() {
+            let code = "match variable { Enum::One => 0, Enum::Two => 1, }";
+            let operation = pretty_read(code, &read_operation);
+            let nl_match = unwrap_to!(operation => NLOperation::Match);
+
+            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+
+            let branches = &nl_match.branches;
+            assert_eq!(branches.len(), 2);
+
+            let (branch, operation) = &branches[0];
+            let branch = unwrap_to!(branch => MatchBranch::Enum);
+            assert_eq!(branch.nl_enum, "Enum");
+            assert_eq!(branch.variant, "One");
+
+            assert_eq!(unwrap_constant_number(operation), 0);
+
+            assert_eq!(branch.variables.len(), 0);
+
+            let (branch, operation) = &branches[1];
+            let branch = unwrap_to!(branch => MatchBranch::Enum);
+            assert_eq!(branch.nl_enum, "Enum");
+            assert_eq!(branch.variant, "Two");
+
+            assert_eq!(unwrap_constant_number(operation), 1);
+
+            assert_eq!(branch.variables.len(), 0);
+        }
+
+        #[test]
+        fn two_branch_no_comma() {
+            let code = "match variable { Enum::One => 0, Enum::Two => 1 }";
+            let operation = pretty_read(code, &read_operation);
+            let nl_match = unwrap_to!(operation => NLOperation::Match);
+
+            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+
+            let branches = &nl_match.branches;
+            assert_eq!(branches.len(), 2);
+
+            let (branch, operation) = &branches[0];
+            let branch = unwrap_to!(branch => MatchBranch::Enum);
+            assert_eq!(branch.nl_enum, "Enum");
+            assert_eq!(branch.variant, "One");
+
+            assert_eq!(unwrap_constant_number(operation), 0);
+
+            assert_eq!(branch.variables.len(), 0);
+
+            let (branch, operation) = &branches[1];
+            let branch = unwrap_to!(branch => MatchBranch::Enum);
+            assert_eq!(branch.nl_enum, "Enum");
+            assert_eq!(branch.variant, "Two");
+
+            assert_eq!(unwrap_constant_number(operation), 1);
+
+            assert_eq!(branch.variables.len(), 0);
+        }
+
+        #[test]
+        fn one_branch_constant() {
+            let code = "match variable { 42 => 0, }";
+            let operation = pretty_read(code, &read_operation);
+            let nl_match = unwrap_to!(operation => NLOperation::Match);
+
+            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+
+            let branches = &nl_match.branches;
+            assert_eq!(branches.len(), 1);
+
+            let (branch, operation) = &branches[0];
+            let branch = unwrap_to!(branch => MatchBranch::Constant);
+            match branch {
+                OpConstant::Integer(value, _) => {
+                    assert_eq!(*value, 42);
+                },
+                _ => {
+                    panic!("Expected integer for constant type, got: {:?}");
+                }
+            }
+
+            assert_eq!(unwrap_constant_number(operation), 0);
+        }
+
+        #[test]
+        fn one_branch_range() {
+            let code = "match variable { 25..42 => 0, }";
+            let operation = pretty_read(code, &read_operation);
+            let nl_match = unwrap_to!(operation => NLOperation::Match);
+
+            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+
+            let branches = &nl_match.branches;
+            assert_eq!(branches.len(), 1);
+
+            let (branch, operation) = &branches[0];
+            let (low, high) = unwrap_to!(branch => MatchBranch::Range);
+
+            assert_eq!(*low, 25);
+            assert_eq!(*high, 42);
+
+            assert_eq!(unwrap_constant_number(operation), 0);
+        }
     }
 
     mod function_calls {
+        use super::*;
 
+        #[test]
+        fn call() {
+            let code = "function()";
+            let operation = pretty_read(code, &read_operation);
+            let function = unwrap_to!(operation => NLOperation::FunctionCall);
+
+            assert_eq!(function.path, "function");
+            assert_eq!(function.arguments.len(), 0);
+        }
+
+        #[test]
+        fn call_from_namespace() {
+            let code = "namespace.function()";
+            let operation = pretty_read(code, &read_operation);
+            let function = unwrap_to!(operation => NLOperation::FunctionCall);
+
+            assert_eq!(function.path, "namespace.function");
+            assert_eq!(function.arguments.len(), 0);
+        }
+
+        #[test]
+        fn call_one_arg() {
+            let code = "function(one)";
+            let operation = pretty_read(code, &read_operation);
+            let function = unwrap_to!(operation => NLOperation::FunctionCall);
+
+            assert_eq!(function.path, "function");
+
+            let arguments = &function.arguments;
+            assert_eq!(arguments.len(), 1);
+            assert_eq!(arguments[0], "one");
+        }
+
+        #[test]
+        fn call_two_arg() {
+            let code = "function(one, two)";
+            let operation = pretty_read(code, &read_operation);
+            let function = unwrap_to!(operation => NLOperation::FunctionCall);
+
+            assert_eq!(function.path, "function");
+
+            let arguments = &function.arguments;
+            assert_eq!(arguments.len(), 2);
+            assert_eq!(arguments[0], "one");
+            assert_eq!(arguments[1], "two");
+        }
     }
 }
