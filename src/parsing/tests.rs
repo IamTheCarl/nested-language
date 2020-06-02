@@ -2068,6 +2068,7 @@ mod executable_blocks {
             assert_eq!(function.path, "function");
 
             let arguments = &function.arguments;
+
             assert_eq!(arguments.len(), 2);
             assert_eq!(arguments[0], "one");
             assert_eq!(arguments[1], "two");

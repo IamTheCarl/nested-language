@@ -854,6 +854,32 @@ fn read_variable_access(input: &str) -> ParserResult<NLOperation> {
     Ok((input, NLOperation::VariableAccess(variable)))
 }
 
+fn read_function_call(input: &str) -> ParserResult<NLOperation> {
+    // my.function(a, b)
+
+    let (input, _) = blank(input)?;
+    let (input, path) = read_variable_name(input)?;
+    let (input, _) = blank(input)?;
+    let (input, arg_input) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
+
+    let (arg_input, mut arguments) = many0(terminated(read_variable_name, char(',')))(arg_input)?;
+
+    println!("Remaining: {}", arg_input);
+
+    let (_, last_arg) = opt(read_variable_name)(arg_input)?;
+    match last_arg {
+        Some(arg) => {
+            arguments.push(arg);
+        },
+        _ => {} // Do nothing if there was no argument.
+    }
+
+    Ok((input, NLOperation::FunctionCall(FunctionCall {
+        path,
+        arguments,
+    })))
+}
+
 fn read_code_block_raw(input: &str) -> ParserResult<NLBlock> {
     let (input, _) = blank(input)?;
     let (input, _) = char('{')(input)?;
@@ -875,7 +901,7 @@ fn read_code_block(input: &str) -> ParserResult<NLOperation> {
 }
 
 fn read_sub_operation(input: &str) -> ParserResult<NLOperation> {
-    alt((read_code_block, read_tuple, read_assignment, read_constant, read_urinary_operator, read_variable_access))(input)
+    alt((read_code_block, read_tuple, read_function_call, read_assignment, read_constant, read_urinary_operator, read_variable_access))(input)
 }
 
 fn read_operation(input: &str) -> ParserResult<NLOperation> {
@@ -887,6 +913,7 @@ fn read_operation(input: &str) -> ParserResult<NLOperation> {
         read_while_loop,
         read_for_loop,
         read_tuple,
+        read_function_call,
         read_assignment,
         read_binary_operator,
         read_constant,
@@ -1217,6 +1244,7 @@ fn read_trait(input: &str) -> ParserResult<RootDeceleration> {
 }
 
 fn read_variable_name(input: &str) -> ParserResult<&str> {
+    let (input, _) = blank(input)?;
     take_while1(is_name)(input)
 }
 
