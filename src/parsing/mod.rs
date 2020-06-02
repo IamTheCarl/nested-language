@@ -391,6 +391,7 @@ fn is_name(c: char) -> bool {
 
     match c {
         '_' => true,
+        '.' => true, // Used for scoped names.
         _ => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
     }
 }
