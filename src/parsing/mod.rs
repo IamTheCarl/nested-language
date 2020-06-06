@@ -387,11 +387,18 @@ fn blank(input: &str) -> ParserResult<()> {
 }
 
 fn is_name(c: char) -> bool {
-    1..5;
-
     match c {
         '_' => true,
         '.' => true, // Used for scoped names.
+        _ => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+    }
+}
+
+fn is_match_branch_name(c: char) -> bool {
+    match c {
+        '_' => true,
+        '.' => true, // Used for scoped names.
+        ':' => true, // Used tp specify Enum variants.
         _ => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
     }
 }
@@ -1112,12 +1119,7 @@ fn read_variant_enum(input: &str) -> ParserResult<RootDeceleration> {
         let (input, name) = read_variable_name(input)?;
         let (input, _) = blank(input)?;
 
-        println!("REMAIN: {}", input);
-
         let (input, args) = opt(read_argument_deceleration_list)(input)?;
-
-        println!("REMAIN: {}", input);
-        println!("ARGS: {:?}", args);
 
         let arguments = if let Some(args) = args {
             args
