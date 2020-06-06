@@ -855,16 +855,12 @@ fn read_variable_access(input: &str) -> ParserResult<NLOperation> {
 }
 
 fn read_function_call(input: &str) -> ParserResult<NLOperation> {
-    // my.function(a, b)
-
     let (input, _) = blank(input)?;
     let (input, path) = read_variable_name(input)?;
     let (input, _) = blank(input)?;
     let (input, arg_input) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
 
     let (arg_input, mut arguments) = many0(terminated(read_variable_name, char(',')))(arg_input)?;
-
-    println!("Remaining: {}", arg_input);
 
     let (_, last_arg) = opt(read_variable_name)(arg_input)?;
     match last_arg {
@@ -997,6 +993,7 @@ fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
 
 fn read_argument_deceleration_list(input: &str) -> ParserResult<Vec<NLArgument>> {
     let (input, arg_input) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
+
     let (arg_input, mut arguments) = many0(terminated(read_argument_declaration, char(',')))(arg_input)?;
 
     let (_, last_arg) = opt(terminated(read_argument_declaration, blank))(arg_input)?;
@@ -1099,6 +1096,56 @@ fn read_function(input: &str) -> ParserResult<RootDeceleration> {
     } else {
         Ok((input, RootDeceleration::Function(function)))
     }
+}
+
+fn read_variant_enum(input: &str) -> ParserResult<RootDeceleration> {
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("enum")(input)?;
+    let (input, _) = blank(input)?;
+    let (input, name) = read_method_name(input)?;
+
+    let (input, _) = blank(input)?;
+    let (input, _) = char('{')(input)?;
+
+    fn read_variant(input: &str) -> ParserResult<EnumVariant> {
+        let (input, _) = blank(input)?;
+        let (input, name) = read_variable_name(input)?;
+        let (input, _) = blank(input)?;
+
+        println!("REMAIN: {}", input);
+
+        let (input, args) = opt(read_argument_deceleration_list)(input)?;
+
+        println!("REMAIN: {}", input);
+        println!("ARGS: {:?}", args);
+
+        let arguments = if let Some(args) = args {
+            args
+        } else {
+            Vec::new()            
+        };
+
+        Ok((input, EnumVariant {
+            name, 
+            arguments,
+        }))
+    }
+
+    let (input, _) = blank(input)?;
+    let (input, mut variants) = many0(terminated(read_variant, char(',')))(input)?;
+    let (input, _) = blank(input)?;
+    let (input, last_variant) = opt(read_variant)(input)?;
+    if let Some(arg) = last_variant {
+        variants.push(arg);
+    }
+
+    let (input, _) = blank(input)?;
+    let (input, _) = char('}')(input)?;
+
+    Ok((input, RootDeceleration::Enum(NLEnum {
+        name,
+        variants,
+    })))
 }
 
 fn read_getter(input: &str) -> ParserResult<NLImplementor> {
@@ -1411,7 +1458,7 @@ fn parse_file_root(input: &str) -> ParserResult<NLFile> {
     };
 
     if !input.is_empty() {
-        let (input, root_defs) = many1(alt((read_struct, read_trait, read_function)))(input)?;
+        let (input, root_defs) = many1(alt((read_struct, read_trait, read_function, read_variant_enum)))(input)?;
 
         for root_def in root_defs {
             match root_def {

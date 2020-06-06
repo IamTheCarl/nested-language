@@ -794,7 +794,7 @@ mod root {
 
         #[test]
         fn one_variant() {
-            let code = "enum MyVariant { One };";
+            let code = "enum MyVariant { One }";
             let file = parse_string(code, "virtual_file").unwrap();
             let enums = file.get_enums();
 
@@ -813,7 +813,7 @@ mod root {
 
         #[test]
         fn two_variant() {
-            let code = "enum MyVariant { One, Two };";
+            let code = "enum MyVariant { One, Two }";
             let file = parse_string(code, "virtual_file").unwrap();
             let enums = file.get_enums();
 
@@ -836,7 +836,7 @@ mod root {
 
         #[test]
         fn one_variant_lazy_comma() {
-            let code = "enum MyVariant { One, Two, };";
+            let code = "enum MyVariant { One, Two, }";
             let file = parse_string(code, "virtual_file").unwrap();
             let enums = file.get_enums();
 
@@ -859,7 +859,7 @@ mod root {
 
         #[test]
         fn one_variant_single_container() {
-            let code = "enum MyVariant { One(a: A), };";
+            let code = "enum MyVariant { One(a: A), }";
             let file = parse_string(code, "virtual_file").unwrap();
             let enums = file.get_enums();
 
@@ -884,7 +884,7 @@ mod root {
 
         #[test]
         fn one_variant_double_container() {
-            let code = "enum MyVariant { One(a: A, b: B), };";
+            let code = "enum MyVariant { One(a: A, b: B), }";
             let file = parse_string(code, "virtual_file").unwrap();
             let enums = file.get_enums();
 
@@ -913,7 +913,7 @@ mod root {
 
         #[test]
         fn two_variant_double_container() {
-            let code = "enum MyVariant { One(a: A, b: B), Two(c: C, d: D), };";
+            let code = "enum MyVariant { One(a: A, b: B), Two(c: C, d: D), }";
             let file = parse_string(code, "virtual_file").unwrap();
             let enums = file.get_enums();
 
