@@ -30,6 +30,7 @@ use nom::character::complete::alphanumeric1;
 use nom::bytes::complete::take_while;
 use nom::character::is_alphanumeric;
 use nom::character::complete::alpha1;
+use nom::character::complete::digit1;
 
 // All tests are kept in their own module.
 #[cfg(test)]
@@ -394,15 +395,6 @@ fn is_name(c: char) -> bool {
     }
 }
 
-fn is_match_branch_name(c: char) -> bool {
-    match c {
-        '_' => true,
-        '.' => true, // Used for scoped names.
-        ':' => true, // Used tp specify Enum variants.
-        _ => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
-    }
-}
-
 fn read_struct_or_trait_name(input: &str) -> ParserResult<&str> {
     delimited(blank, alphanumeric1, blank)(input)
 }
@@ -489,7 +481,7 @@ fn is_number(c: char) -> bool {
     }
 }
 
-fn parse_integer<T>(input: &str) -> ParserResult<T>
+fn parse_number<T>(input: &str) -> ParserResult<T>
     where T: std::str::FromStr {
     let value = input.parse::<T>();
     match value {
@@ -519,11 +511,11 @@ fn read_numerical_constant(input: &str) -> ParserResult<OpConstant> {
     };
 
     if !number.contains(".") {
-        let (_, value) = parse_integer::<i128>(number)?;
+        let (_, value) = parse_number::<i128>(number)?;
         Ok((input, OpConstant::Integer(value, cast)))
     } else {
         // Has to be a floating point number.
-        let (_, value) = parse_integer::<f64>(number)?;
+        let (_, value) = parse_number::<f64>(number)?;
         Ok((input, OpConstant::Float(value, cast)))
     }
 }
@@ -536,9 +528,14 @@ fn read_string_constant(input: &str) -> ParserResult<OpConstant> {
     Ok((input, OpConstant::String(string)))
 }
 
-fn read_constant(input: &str) -> ParserResult<NLOperation> {
+fn read_constant_raw(input: &str) -> ParserResult<OpConstant> {
     let (input, _) = blank(input)?;
     let (input, constant) = alt((read_boolean_constant, read_numerical_constant, read_string_constant))(input)?;
+    Ok((input, constant))
+}
+
+fn read_constant(input: &str) -> ParserResult<NLOperation> {
+    let (input, constant) = read_constant_raw(input)?;
     Ok((input, NLOperation::Constant(constant)))
 }
 
@@ -870,16 +867,122 @@ fn read_function_call(input: &str) -> ParserResult<NLOperation> {
     let (arg_input, mut arguments) = many0(terminated(read_variable_name, char(',')))(arg_input)?;
 
     let (_, last_arg) = opt(read_variable_name)(arg_input)?;
-    match last_arg {
-        Some(arg) => {
-            arguments.push(arg);
-        },
-        _ => {} // Do nothing if there was no argument.
-    }
+    if let Some(arg) = last_arg {
+        arguments.push(arg);
+    };
 
     Ok((input, NLOperation::FunctionCall(FunctionCall {
         path,
         arguments,
+    })))
+}
+
+fn read_match(input: &str) -> ParserResult<NLOperation> {
+    let (input, _) = blank(input)?;
+    let (input, _) = tag("match")(input)?;
+    let (input, _) = blank(input)?;
+    let (input, input_operation) = read_operation(input)?;
+
+    let (input, _) = blank(input)?;
+    let (input, _) = char('{')(input)?;
+
+    fn read_branch_body(input: &str) -> ParserResult<NLOperation> {
+        let (input, _) = blank(input)?;
+        let (input, _) = tag("=>")(input)?;
+        let (input, _) = blank(input)?;
+
+        read_operation(input)
+    }
+
+    fn read_enum_branch(input: &str) -> ParserResult<(MatchBranch, NLOperation)> {
+
+        let (input, _) = blank(input)?;
+        let (input, nl_enum) = read_variable_name(input)?;
+        let (input, _) = blank(input)?;
+        let (input, _) = tag("::")(input)?;
+        let (input, _) = blank(input)?;
+        let (input, variant) = read_variable_name(input)?;
+        let (input, _) = blank(input)?;
+
+        let (input, var_input) = opt(delimited(char('('), take_while(|c| c != ')'), char(')')))(input)?;
+
+        let variables = if let Some(var_input) = var_input {
+            let (var_input, mut variables) = many0(terminated(read_variable_name, char(',')))(var_input)?;
+    
+            let (_, last_arg) = opt(read_variable_name)(var_input)?;
+            if let Some(arg) = last_arg {
+                variables.push(arg);
+            };
+
+            variables
+        } else {
+            Vec::new()
+        };
+
+        let (input, operation) = read_branch_body(input)?;
+
+        let match_branch = MatchBranch::Enum(MatchEnumBranch {
+            nl_enum,
+            variant,
+            variables
+        });
+
+        Ok((input, (match_branch, operation)))
+    }
+
+    fn read_constant_branch(input: &str) -> ParserResult<(MatchBranch, NLOperation)> {
+        let (input, _) = blank(input)?;
+        let (input, constant) = read_constant_raw(input)?;
+        let (input, _) = blank(input)?;
+
+        let (input, operation) = read_branch_body(input)?;
+
+        Ok((input, (MatchBranch::Constant(constant), operation)))
+    }
+
+    fn read_range_branch(input: &str) -> ParserResult<(MatchBranch, NLOperation)> {
+        let (input, _) = blank(input)?;
+        let (input, lower) = digit1(input)?;
+        let (_, lower) = parse_number(lower)?;
+
+        let (input, _) = blank(input)?;
+        let (input, _) = tag("..")(input)?;
+
+        let (input, _) = blank(input)?;
+        let (input, higher) = digit1(input)?;
+        let (_, higher) = parse_number(higher)?;
+
+        let (input, _) = blank(input)?;
+        let (input, operation) = read_branch_body(input)?;
+
+        Ok((input, (MatchBranch::Range((lower, higher)), operation)))
+    }
+
+    fn read_branch(input: &str) -> ParserResult<(MatchBranch, NLOperation)> {
+        alt((read_range_branch, read_constant_branch, read_enum_branch))(input)
+    }
+
+    let (input, _) = blank(input)?;
+    let (input, mut branches) = many0(terminated(read_branch, char(',')))(input)?;
+    println!("G");
+    let (input, _) = blank(input)?;
+    let (input, last_branch) = opt(read_branch)(input)?;
+    println!("H");
+    if let Some(arg) = last_branch {
+        branches.push(arg);
+    }
+
+    let (input, _) = blank(input)?;
+
+    println!("CONTAIN: {:?}, REMAIN: {}", branches, input);
+    let (input, _) = char('}')(input)?;
+    println!("I");
+
+    println!("FINISH");
+
+    Ok((input, NLOperation::Match(Match {
+        input: Box::new(input_operation),
+        branches,
     })))
 }
 
@@ -911,6 +1014,7 @@ fn read_operation(input: &str) -> ParserResult<NLOperation> {
     alt((
         read_code_block,
         read_if_statement,
+        read_match,
         read_break_keyword,
         read_basic_loop,
         read_while_loop,

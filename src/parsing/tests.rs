@@ -2006,6 +2006,7 @@ mod executable_blocks {
         fn one_branch_range() {
             let code = "match variable { 25..42 => 0, }";
             let operation = pretty_read(code, &read_operation);
+            println!("{:?}", operation);
             let nl_match = unwrap_to!(operation => NLOperation::Match);
 
             assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
