@@ -1186,7 +1186,7 @@ mod executable_blocks {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
                     assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
+                    assert_eq!(assign.type_assignments.len(), 0, "Unexpected type specified.");
 
                     assert_eq!(assign.assignment,
                                Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
@@ -1210,7 +1210,7 @@ mod executable_blocks {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
                     assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
+                    assert_eq!(assign.type_assignments.len(), 0, "Unexpected type specified.");
 
                     assert_eq!(assign.assignment,
                                Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
@@ -1234,7 +1234,7 @@ mod executable_blocks {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
                     assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignment, NLType::I32, "Unexpected type specified.");
+                    assert_eq!(assign.type_assignments[0], NLType::I32, "Unexpected type specified.");
 
                     assert_eq!(assign.assignment,
                                Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
@@ -1258,7 +1258,7 @@ mod executable_blocks {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
                     assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignment, NLType::I32, "Unexpected type specified.");
+                    assert_eq!(assign.type_assignments[0], NLType::I32, "Unexpected type specified.");
 
                     assert_eq!(assign.assignment,
                                Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
@@ -1282,7 +1282,7 @@ mod executable_blocks {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
                     assert_eq!(assign.to_assign.len(), 2, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
+                    assert_eq!(assign.type_assignments.len(), 0, "Unexpected type specified.");
 
                     assert_eq!(assign.assignment,
                                Box::new(NLOperation::Tuple(vec![
@@ -1314,7 +1314,7 @@ mod executable_blocks {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
                     assert_eq!(assign.to_assign.len(), 2, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
+                    assert_eq!(assign.type_assignments.len(), 0, "Unexpected type specified.");
 
                     assert_eq!(assign.assignment,
                                Box::new(NLOperation::Tuple(vec![
@@ -1346,7 +1346,7 @@ mod executable_blocks {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, false, "Assignment should have been  new.");
                     assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
+                    assert_eq!(assign.type_assignments.len(), 0, "Unexpected type specified.");
 
                     assert_eq!(assign.assignment,
                                Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
@@ -1370,7 +1370,7 @@ mod executable_blocks {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, false, "Assignment should have been  new.");
                     assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignment, NLType::None, "Unexpected type specified.");
+                    assert_eq!(assign.type_assignments.len(), 0, "Unexpected type specified.");
 
                     assert_eq!(assign.assignment,
                                Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");

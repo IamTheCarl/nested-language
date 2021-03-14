@@ -4,3 +4,4 @@
 extern crate unwrap_to;
 
 pub mod parsing;
+pub mod compiling;

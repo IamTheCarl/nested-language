@@ -85,6 +85,12 @@ pub struct NLBlock<'a> {
     operations: Vec<NLOperation<'a>>,
 }
 
+impl<'a> NLBlock<'a> {
+    pub fn get_operations(&self) -> &Vec<NLOperation<'a>> {
+        &self.operations
+    }
+}
+
 pub struct NLFunction<'a> {
     name: &'a str,
     arguments: Vec<NLArgument<'a>>,
@@ -177,11 +183,11 @@ pub struct EnumVariant<'a> {
 }
 
 impl <'a> EnumVariant<'a> {
-    fn get_name(&self) -> &str {
+    pub fn get_name(&self) -> &str {
         self.name
     }
 
-    fn get_arguments(&self) -> &Vec<NLArgument<'a>> {
+    pub fn get_arguments(&self) -> &Vec<NLArgument<'a>> {
         &self.arguments
     }
 }
@@ -192,11 +198,11 @@ pub struct NLEnum<'a> {
 }
 
 impl<'a> NLEnum<'a> {
-    fn get_name(&self) -> &str {
+    pub fn get_name(&self) -> &str {
         self.name
     }
 
-    fn get_variants(&self) -> &Vec<EnumVariant> {
+    pub fn get_variants(&self) -> &Vec<EnumVariant> {
         &self.variants
     }
 }
@@ -209,7 +215,7 @@ enum RootDeceleration<'a> {
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
-enum OpConstant<'a> {
+pub enum OpConstant<'a> {
     Boolean(bool),
     Integer(i128, NLType<'a>),
     Float(f64, NLType<'a>),
@@ -218,7 +224,7 @@ enum OpConstant<'a> {
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
-struct OpVariable<'a> {
+pub struct OpVariable<'a> {
     name: &'a str,
 }
 
@@ -229,15 +235,22 @@ impl<'a> OpVariable<'a> {
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
-struct OpAssignment<'a> {
+pub struct OpAssignment<'a> {
     is_new: bool,
     to_assign: Vec<OpVariable<'a>>,
-    type_assignment: NLType<'a>,
+    type_assignments: Vec<NLType<'a>>,
     assignment: Box<NLOperation<'a>>,
 }
 
+impl<'a> OpAssignment<'a> {
+    pub fn is_new(&self) -> bool { self.is_new }
+    pub fn get_variable_to_assign(&self) -> &Vec<OpVariable> { &self.to_assign }
+    pub fn get_types(&self) -> &Vec<NLType> { &self.type_assignments }
+    pub fn get_value(&self) -> &Box<NLOperation> { &self.assignment }
+}
+
 #[derive(PartialOrd, PartialEq, Debug)]
-enum OpOperator<'a> {
+pub enum OpOperator<'a> {
     CompareEqual((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
     CompareNotEqual((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
     CompareGreater((Box<NLOperation<'a>>, Box<NLOperation<'a>>)),
@@ -273,20 +286,20 @@ enum OpOperator<'a> {
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
-struct IfStatement<'a> {
+pub struct IfStatement<'a> {
     condition: Box<NLOperation<'a>>,
     true_block: NLBlock<'a>,
     false_block: NLBlock<'a>,
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
-struct WhileLoop<'a> {
+pub struct WhileLoop<'a> {
     condition: Box<NLOperation<'a>>,
     block: NLBlock<'a>,
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
-struct ForLoop<'a> {
+pub struct ForLoop<'a> {
     variable: OpVariable<'a>,
     iterator: Box<NLOperation<'a>>,
     block: NLBlock<'a>,
@@ -308,19 +321,19 @@ enum MatchBranch<'a> {
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
-struct Match<'a> {
+pub struct Match<'a> {
     input: Box<NLOperation<'a>>,
     branches: Vec<(MatchBranch<'a>, NLOperation<'a>)>,
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
-struct FunctionCall<'a> {
+pub struct FunctionCall<'a> {
     path: &'a str,
     arguments: Vec<&'a str>,
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
-enum NLOperation<'a> {
+pub enum NLOperation<'a> {
     Block(NLBlock<'a>),
     Constant(OpConstant<'a>),
     Assign(OpAssignment<'a>),
@@ -564,10 +577,15 @@ fn read_assignment(input: &str) -> ParserResult<NLOperation> {
     let (input, _) = blank(input)?;
     let (input, has_type_assignment) = opt(char(':'))(input)?;
     let has_type_assignment = has_type_assignment.is_some();
-    let (input, type_assignment) = if !has_type_assignment {
-        (input, NLType::None)
+    let (input, type_assignments) = if !has_type_assignment {
+        (input, vec![])
     } else {
-        read_variable_type(input)?
+        let (input, assignment) = read_variable_type(input)?;
+        let assignment = match assignment {
+            NLType::Tuple(tuple) => tuple,
+            _ => vec![assignment],
+        };
+        (input, assignment)
     };
 
     // Consume equal sign.
@@ -582,7 +600,7 @@ fn read_assignment(input: &str) -> ParserResult<NLOperation> {
     let assignment = OpAssignment {
         is_new,
         to_assign: variables,
-        type_assignment,
+        type_assignments,
         assignment: Box::new(assignment),
     };
 
@@ -964,21 +982,17 @@ fn read_match(input: &str) -> ParserResult<NLOperation> {
 
     let (input, _) = blank(input)?;
     let (input, mut branches) = many0(terminated(read_branch, char(',')))(input)?;
-    println!("G");
+
     let (input, _) = blank(input)?;
     let (input, last_branch) = opt(read_branch)(input)?;
-    println!("H");
+
     if let Some(arg) = last_branch {
         branches.push(arg);
     }
 
     let (input, _) = blank(input)?;
 
-    println!("CONTAIN: {:?}, REMAIN: {}", branches, input);
     let (input, _) = char('}')(input)?;
-    println!("I");
-
-    println!("FINISH");
 
     Ok((input, NLOperation::Match(Match {
         input: Box::new(input_operation),
