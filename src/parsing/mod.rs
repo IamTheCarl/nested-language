@@ -66,6 +66,55 @@ impl<'a> NLType<'a> {
             _ => 0,
         }
     }
+
+    pub fn is_boolean(&self) -> bool {
+        match self {
+            NLType::Boolean => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_integer(&self) -> bool {
+        match self {
+            NLType::I8 => true,
+            NLType::I16 => true,
+            NLType::I32 => true,
+            NLType::I64 => true,
+            NLType::U8 => true,
+            NLType::U16 => true,
+            NLType::U32 => true,
+            NLType::U64 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_unsigned(&self) -> bool {
+        match self {
+            NLType::U8 => true,
+            NLType::U16 => true,
+            NLType::U32 => true,
+            NLType::U64 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_signed(&self) -> bool {
+        match self {
+            NLType::I8 => true,
+            NLType::I16 => true,
+            NLType::I32 => true,
+            NLType::I64 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_float(&self) -> bool {
+        match self {
+            NLType::F32 => true,
+            NLType::F64 => true,
+            _ => false,
+        }
+    }
 }
 
 pub struct NLStructVariable<'a> {
@@ -270,7 +319,7 @@ enum RootDeceleration<'a> {
 #[derive(PartialOrd, PartialEq, Debug)]
 pub enum OpConstant<'a> {
     Boolean(bool),
-    Integer(i128, NLType<'a>),
+    Integer(u64, NLType<'a>),
     Float(f64, NLType<'a>),
     String(&'a str),
     // TODO add support for defining a constant enum.
@@ -550,6 +599,7 @@ fn read_boolean_constant(input: &str) -> ParserResult<OpConstant> {
     }
 }
 
+// TODO this is to be used for casting variable types, not constant types.
 fn read_cast(input: &str) -> ParserResult<NLType> {
     let (input, _) = blank(input)?;
     let (input, _) = tag("as")(input)?;
@@ -590,20 +640,32 @@ where
 
 fn read_numerical_constant(input: &str) -> ParserResult<OpConstant> {
     let (input, number) = terminated(take_while1(is_number), blank)(input)?;
-    let (input, cast) = opt(read_cast)(input)?;
-
-    let cast = match cast {
-        Some(cast) => cast,
-        None => NLType::None,
+    let (input, nl_type) = match read_variable_type_primitive_no_whitespace(input) {
+        Ok(result) => result,
+        Err(_) => {
+            // Default to a 32bit type if unspecified.
+            if number.contains(".") {
+                // It's probably a floating point type.
+                (input, NLType::F32)
+            } else {
+                // It's probably an integer type.
+                (input, NLType::I32)
+            }
+        }
     };
 
-    if !number.contains(".") {
-        let (_, value) = parse_number::<i128>(number)?;
-        Ok((input, OpConstant::Integer(value, cast)))
+    if nl_type.is_integer() {
+        if nl_type.is_signed() {
+            let (_, value) = parse_number::<i64>(number)?;
+            Ok((input, OpConstant::Integer(value as u64, nl_type)))
+        } else {
+            let (_, value) = parse_number::<u64>(number)?;
+            Ok((input, OpConstant::Integer(value, nl_type)))
+        }
     } else {
         // Has to be a floating point number.
         let (_, value) = parse_number::<f64>(number)?;
-        Ok((input, OpConstant::Float(value, cast)))
+        Ok((input, OpConstant::Float(value, nl_type)))
     }
 }
 
@@ -1533,37 +1595,61 @@ fn identify_struct_or_trait_type(input: &str) -> ParserResult<NLType> {
     }
 }
 
-fn read_variable_type(input: &str) -> ParserResult<NLType> {
-    let (input, _) = blank(input)?;
-    let (input_new, type_name) = alphanumeric0(input)?;
+fn read_variable_type_primitive_no_whitespace(input: &str) -> ParserResult<NLType> {
+    let (input, type_name) = alphanumeric0(input)?;
 
     match type_name {
-        "i8" => Ok((input_new, NLType::I8)),
-        "i16" => Ok((input_new, NLType::I16)),
-        "i32" => Ok((input_new, NLType::I32)),
-        "i64" => Ok((input_new, NLType::I64)),
-        "u8" => Ok((input_new, NLType::U8)),
-        "u16" => Ok((input_new, NLType::U16)),
-        "u32" => Ok((input_new, NLType::U32)),
-        "u64" => Ok((input_new, NLType::U64)),
-        "f32" => Ok((input_new, NLType::F32)),
-        "f64" => Ok((input_new, NLType::F64)),
-        "bool" => Ok((input_new, NLType::Boolean)),
-        "str" => Ok((input_new, NLType::OwnedString)),
+        "i8" => Ok((input, NLType::I8)),
+        "i16" => Ok((input, NLType::I16)),
+        "i32" => Ok((input, NLType::I32)),
+        "i64" => Ok((input, NLType::I64)),
+        "u8" => Ok((input, NLType::U8)),
+        "u16" => Ok((input, NLType::U16)),
+        "u32" => Ok((input, NLType::U32)),
+        "u64" => Ok((input, NLType::U64)),
+        "f32" => Ok((input, NLType::F32)),
+        "f64" => Ok((input, NLType::F64)),
+        "bool" => Ok((input, NLType::Boolean)),
 
         _ => {
-            // Could it be a referenced string?
-            let (input_new, _) = blank(input)?;
-            let (input_new, is_referenced_string) = opt(preceded(blank, tag("str")))(input_new)?;
-            let is_referenced_string = is_referenced_string.is_some();
-            if is_referenced_string {
-                return Ok((input_new, NLType::BorrowedString));
-            } else {
-                // Okay so we ether have Struct or Trait. Could even be a reference.
-                return identify_struct_or_trait_type(input);
-            }
+            let vek = VerboseErrorKind::Context(
+                "Constants must be primative types: i8-64, u8-64, f32-64, or bool.",
+            );
+
+            let ve = VerboseError {
+                errors: vec![(input, vek)],
+            };
+
+            Err(NomErr::Error(ve))
         }
     }
+}
+
+fn read_variable_type_no_whitespace(input: &str) -> ParserResult<NLType> {
+    let (input_new, type_name) = alphanumeric0(input)?;
+
+    fn read_advanced_types(input: &str) -> ParserResult<NLType> {
+        // Could it be a referenced string?
+        let (input, _) = blank(input)?;
+        let (input, is_referenced_string) = opt(preceded(blank, tag("str")))(input)?;
+        let is_referenced_string = is_referenced_string.is_some();
+        if is_referenced_string {
+            return Ok((input, NLType::BorrowedString));
+        } else {
+            // Okay so we ether have Struct or Trait. Could even be a reference.
+            return identify_struct_or_trait_type(input);
+        }
+    }
+
+    alt((
+        read_variable_type_primitive_no_whitespace,
+        read_advanced_types,
+    ))(input)
+}
+
+fn read_variable_type(input: &str) -> ParserResult<NLType> {
+    let (input, _) = blank(input)?;
+    read_variable_type_no_whitespace(input)
 }
 
 fn read_struct_variable(input: &str) -> ParserResult<NLStructVariable> {

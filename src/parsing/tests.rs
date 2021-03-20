@@ -1,4 +1,3 @@
-
 use super::*;
 
 use unwrap_to::unwrap_to;
@@ -10,7 +9,7 @@ fn pretty_read<'a, T>(input: &'a str, function: &dyn Fn(&'a str) -> ParserResult
             let (_, result) = tuple;
 
             result
-        },
+        }
         Err(e) => {
             match e {
                 nom::Err::Error(e) | nom::Err::Failure(e) => {
@@ -32,7 +31,7 @@ fn pretty_read<'a, T>(input: &'a str, function: &dyn Fn(&'a str) -> ParserResult
 fn unwrap_constant<'a>(op: NLOperation<'a>) -> OpConstant<'a> {
     match op {
         NLOperation::Constant(constant) => constant,
-        _ => panic!("Expected constant.")
+        _ => panic!("Expected constant."),
     }
 }
 
@@ -40,19 +39,15 @@ fn unwrap_constant_boolean<'a>(op: &NLOperation<'a>) -> bool {
     let constant = unwrap_to!(op => NLOperation::Constant);
 
     match constant {
-        OpConstant::Boolean(constant) => {
-            *constant
-        },
+        OpConstant::Boolean(constant) => *constant,
         _ => panic!("Expected boolean for constant type, got: {:?}", op),
     }
 }
 
-fn unwrap_constant_number(op: &NLOperation) -> i128 {
+fn unwrap_constant_number(op: &NLOperation) -> u64 {
     let constant = unwrap_to!(op => NLOperation::Constant);
     match constant {
-        OpConstant::Integer(value, _) => {
-            *value
-        },
+        OpConstant::Integer(value, _) => *value,
         _ => {
             panic!("Expected integer for constant type, got: {:?}");
         }
@@ -78,7 +73,10 @@ mod root {
     fn empty_struct_and_trait() {
         let file_name = "tests/parsing/empty_struct_and_trait.nl";
         parse_file(&mut Path::new(file_name), &|file: &NLFile| {
-            assert_eq!(file.name, "empty_struct_and_trait.nl", "File name not copied correctly.");
+            assert_eq!(
+                file.name, "empty_struct_and_trait.nl",
+                "File name not copied correctly."
+            );
 
             assert_eq!(file.traits.len(), 1, "Wrong number of traits.");
             let my_trait = &file.traits[0];
@@ -87,7 +85,8 @@ mod root {
             assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
             let my_struct = &file.structs[0];
             assert_eq!(my_struct.name, "MyStruct", "Wrong name for struct.");
-        }).unwrap();
+        })
+        .unwrap();
     }
 
     #[test]
@@ -98,8 +97,10 @@ mod root {
         match result {
             Err(error) => {
                 // Everything is fine! ... in a way.
-                assert!(error.to_string().contains("I shouldn't be here in the root."));
-            },
+                assert!(error
+                    .to_string()
+                    .contains("I shouldn't be here in the root."));
+            }
             Ok(_) => {
                 panic!("No error when one was expected.");
             }
@@ -114,14 +115,18 @@ mod root {
         fn single_empty_struct() {
             let file_name = "tests/parsing/single_struct_empty.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
-                assert_eq!(file.name, "single_struct_empty.nl", "File name not copied correctly.");
+                assert_eq!(
+                    file.name, "single_struct_empty.nl",
+                    "File name not copied correctly."
+                );
 
                 assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
                 let my_struct = &file.structs[0];
                 assert_eq!(my_struct.name, "MyStruct", "Wrong name for struct.");
 
                 assert_eq!(file.traits.len(), 0, "Wrong number of traits.");
-            }).unwrap();
+            })
+            .unwrap();
         }
 
         #[test]
@@ -136,7 +141,8 @@ mod root {
                 let variable = &my_struct.variables[0];
                 assert_eq!(variable.name, "variable", "Variable had wrong name.");
                 assert_eq!(variable.my_type, NLType::I32, "Variable had wrong type.");
-            }).unwrap();
+            })
+            .unwrap();
         }
 
         #[test]
@@ -151,7 +157,8 @@ mod root {
                 let variable = &my_struct.variables[0];
                 assert_eq!(variable.name, "variable", "Variable had wrong name.");
                 assert_eq!(variable.my_type, NLType::I32, "Variable had wrong type.");
-            }).unwrap();
+            })
+            .unwrap();
         }
 
         #[test]
@@ -171,7 +178,8 @@ mod root {
                 let variable = &my_struct.variables[1];
                 assert_eq!(variable.name, "other_variable", "Variable had wrong name.");
                 assert_eq!(variable.my_type, NLType::I32, "Variable had wrong type.");
-            }).unwrap();
+            })
+            .unwrap();
         }
 
         #[test]
@@ -179,7 +187,10 @@ mod root {
         fn empty_struct_and_trait_single_line_comments() {
             let file_name = "tests/parsing/empty_struct_and_trait_with_single_line_comments.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
-                assert_eq!(file.name, "empty_struct_and_trait_with_single_line_comments.nl", "File name not copied correctly.");
+                assert_eq!(
+                    file.name, "empty_struct_and_trait_with_single_line_comments.nl",
+                    "File name not copied correctly."
+                );
 
                 assert_eq!(file.traits.len(), 1, "Wrong number of traits.");
                 let my_trait = &file.traits[0];
@@ -188,7 +199,8 @@ mod root {
                 assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
                 let my_struct = &file.structs[0];
                 assert_eq!(my_struct.name, "MyStruct", "Wrong name for struct.");
-            }).unwrap();
+            })
+            .unwrap();
         }
 
         #[test]
@@ -196,7 +208,10 @@ mod root {
         fn empty_struct_and_trait_multi_line_comments() {
             let file_name = "tests/parsing/empty_struct_and_trait_with_multi_line_comments.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
-                assert_eq!(file.name, "empty_struct_and_trait_with_multi_line_comments.nl", "File name not copied correctly.");
+                assert_eq!(
+                    file.name, "empty_struct_and_trait_with_multi_line_comments.nl",
+                    "File name not copied correctly."
+                );
 
                 assert_eq!(file.traits.len(), 1, "Wrong number of traits.");
                 let my_trait = &file.traits[0];
@@ -205,7 +220,8 @@ mod root {
                 assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
                 let my_struct = &file.structs[0];
                 assert_eq!(my_struct.name, "MyStruct", "Wrong name for struct.");
-            }).unwrap();
+            })
+            .unwrap();
         }
 
         #[test]
@@ -216,11 +232,19 @@ mod root {
                 assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
                 let my_struct = &file.structs[0];
 
-                assert_eq!(my_struct.implementations.len(), 1, "Wrong number of implementations.");
+                assert_eq!(
+                    my_struct.implementations.len(),
+                    1,
+                    "Wrong number of implementations."
+                );
                 let implementation = &my_struct.implementations[0];
 
-                assert_eq!(implementation.name, "Self", "Implementation had wrong name.");
-            }).unwrap();
+                assert_eq!(
+                    implementation.name, "Self",
+                    "Implementation had wrong name."
+                );
+            })
+            .unwrap();
         }
 
         #[test]
@@ -231,28 +255,53 @@ mod root {
                 assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
                 let my_struct = &file.structs[0];
 
-                assert_eq!(my_struct.implementations.len(), 1, "Wrong number of implementations.");
+                assert_eq!(
+                    my_struct.implementations.len(),
+                    1,
+                    "Wrong number of implementations."
+                );
                 let implementation = &my_struct.implementations[0];
 
-                assert_eq!(implementation.name, "Self", "Implementation had wrong name.");
-                assert_eq!(implementation.implementors.len(), 4, "Wrong number of methods.");
-            }).unwrap();
+                assert_eq!(
+                    implementation.name, "Self",
+                    "Implementation had wrong name."
+                );
+                assert_eq!(
+                    implementation.implementors.len(),
+                    4,
+                    "Wrong number of methods."
+                );
+            })
+            .unwrap();
         }
 
         #[test]
         /// Compile a file with an empty struct and an empty trait. This one is special because it has multi line comments in it.
         fn struct_self_implementation_with_methods_and_encapsulations() {
-            let file_name = "tests/parsing/struct_self_implementation_with_methods_and_encapsulations.nl";
+            let file_name =
+                "tests/parsing/struct_self_implementation_with_methods_and_encapsulations.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
                 assert_eq!(file.structs.len(), 1, "Wrong number of structs.");
                 let my_struct = &file.structs[0];
 
-                assert_eq!(my_struct.implementations.len(), 1, "Wrong number of implementations.");
+                assert_eq!(
+                    my_struct.implementations.len(),
+                    1,
+                    "Wrong number of implementations."
+                );
                 let implementation = &my_struct.implementations[0];
 
-                assert_eq!(implementation.name, "Self", "Implementation had wrong name.");
-                assert_eq!(implementation.implementors.len(), 10, "Wrong number of methods.");
-            }).unwrap();
+                assert_eq!(
+                    implementation.name, "Self",
+                    "Implementation had wrong name."
+                );
+                assert_eq!(
+                    implementation.implementors.len(),
+                    10,
+                    "Wrong number of methods."
+                );
+            })
+            .unwrap();
         }
     }
 
@@ -264,14 +313,18 @@ mod root {
         fn single_empty_trait() {
             let file_name = "tests/parsing/single_trait_empty.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
-                assert_eq!(file.name, "single_trait_empty.nl", "File name not copied correctly.");
+                assert_eq!(
+                    file.name, "single_trait_empty.nl",
+                    "File name not copied correctly."
+                );
 
                 assert_eq!(file.traits.len(), 1, "Wrong number of traits.");
                 let my_trait = &file.traits[0];
                 assert_eq!(my_trait.name, "MyTrait", "Wrong name for trait.");
 
                 assert_eq!(file.structs.len(), 0, "Wrong number of structs.");
-            }).unwrap();
+            })
+            .unwrap();
         }
 
         #[test]
@@ -284,7 +337,8 @@ mod root {
 
                 assert_eq!(my_trait.name, "MyTrait", "Implementation had wrong name.");
                 assert_eq!(my_trait.implementors.len(), 10, "Wrong number of methods.");
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -374,7 +428,11 @@ mod root {
 
             let arg = &args[0];
             assert_eq!(arg.name, "self", "Wrong argument name.");
-            assert_eq!(arg.nl_type, NLType::MutableSelfReference, "Wrong argument type.");
+            assert_eq!(
+                arg.nl_type,
+                NLType::MutableSelfReference,
+                "Wrong argument type."
+            );
         }
 
         #[test]
@@ -387,7 +445,11 @@ mod root {
 
             let arg = &args[0];
             assert_eq!(arg.name, "self", "Wrong argument name.");
-            assert_eq!(arg.nl_type, NLType::MutableSelfReference, "Wrong argument type.");
+            assert_eq!(
+                arg.nl_type,
+                NLType::MutableSelfReference,
+                "Wrong argument type."
+            );
         }
 
         #[test]
@@ -413,7 +475,11 @@ mod root {
 
             let arg = &args[0];
             assert_eq!(arg.name, "self", "Wrong argument name.");
-            assert_eq!(arg.nl_type, NLType::MutableSelfReference, "Wrong argument type.");
+            assert_eq!(
+                arg.nl_type,
+                NLType::MutableSelfReference,
+                "Wrong argument type."
+            );
         }
 
         #[test]
@@ -426,7 +492,11 @@ mod root {
 
             let arg = &args[0];
             assert_eq!(arg.name, "var", "Wrong argument name.");
-            assert_eq!(arg.nl_type, NLType::ReferencedStruct("SomeStruct"), "Wrong argument type.");
+            assert_eq!(
+                arg.nl_type,
+                NLType::ReferencedStruct("SomeStruct"),
+                "Wrong argument type."
+            );
         }
 
         #[test]
@@ -439,7 +509,11 @@ mod root {
 
             let arg = &args[0];
             assert_eq!(arg.name, "var", "Wrong argument name.");
-            assert_eq!(arg.nl_type, NLType::MutableReferencedStruct("SomeStruct"), "Wrong argument type.");
+            assert_eq!(
+                arg.nl_type,
+                NLType::MutableReferencedStruct("SomeStruct"),
+                "Wrong argument type."
+            );
         }
 
         #[test]
@@ -452,7 +526,11 @@ mod root {
 
             let arg = &args[0];
             assert_eq!(arg.name, "var", "Wrong argument name.");
-            assert_eq!(arg.nl_type, NLType::OwnedStruct("SomeStruct"), "Wrong argument type.");
+            assert_eq!(
+                arg.nl_type,
+                NLType::OwnedStruct("SomeStruct"),
+                "Wrong argument type."
+            );
         }
 
         #[test]
@@ -465,7 +543,11 @@ mod root {
 
             let arg = &args[0];
             assert_eq!(arg.name, "var", "Wrong argument name.");
-            assert_eq!(arg.nl_type, NLType::ReferencedTrait("SomeTrait"), "Wrong argument type.");
+            assert_eq!(
+                arg.nl_type,
+                NLType::ReferencedTrait("SomeTrait"),
+                "Wrong argument type."
+            );
         }
 
         #[test]
@@ -478,7 +560,11 @@ mod root {
 
             let arg = &args[0];
             assert_eq!(arg.name, "var", "Wrong argument name.");
-            assert_eq!(arg.nl_type, NLType::MutableReferencedTrait("SomeTrait"), "Wrong argument type.");
+            assert_eq!(
+                arg.nl_type,
+                NLType::MutableReferencedTrait("SomeTrait"),
+                "Wrong argument type."
+            );
         }
 
         #[test]
@@ -491,7 +577,11 @@ mod root {
 
             let arg = &args[0];
             assert_eq!(arg.name, "var", "Wrong argument name.");
-            assert_eq!(arg.nl_type, NLType::OwnedTrait("SomeTrait"), "Wrong argument type.");
+            assert_eq!(
+                arg.nl_type,
+                NLType::OwnedTrait("SomeTrait"),
+                "Wrong argument type."
+            );
         }
     }
 
@@ -502,41 +592,77 @@ mod root {
         fn all_global_function_types() {
             let file_name = "tests/parsing/global_functions.nl";
             parse_file(&mut Path::new(file_name), &|file: &NLFile| {
-                assert_eq!(file.name, "global_functions.nl", "File name not copied correctly.");
+                assert_eq!(
+                    file.name, "global_functions.nl",
+                    "File name not copied correctly."
+                );
 
                 assert_eq!(file.functions.len(), 4, "Wrong number of functions.");
 
                 // fn my_function();
                 let function = &file.functions[0];
-                assert_eq!(function.get_name(), "my_function", "Wrong name for function.");
+                assert_eq!(
+                    function.get_name(),
+                    "my_function",
+                    "Wrong name for function."
+                );
                 assert_eq!(function.arguments.len(), 0, "Wrong number of arguments.");
                 assert_eq!(function.return_type, NLType::None, "Wrong return type.");
-                assert_eq!(function.block.is_none(), true, "Function should not have been implemented.");
+                assert_eq!(
+                    function.block.is_none(),
+                    true,
+                    "Function should not have been implemented."
+                );
 
                 // fn my_function() {}
                 let function = &file.functions[1];
-                assert_eq!(function.get_name(), "my_function", "Wrong name for function.");
+                assert_eq!(
+                    function.get_name(),
+                    "my_function",
+                    "Wrong name for function."
+                );
                 assert_eq!(function.arguments.len(), 0, "Wrong number of arguments.");
                 assert_eq!(function.return_type, NLType::None, "Wrong return type.");
-                assert_eq!(function.block.is_some(), true, "Function should not have been implemented.");
+                assert_eq!(
+                    function.block.is_some(),
+                    true,
+                    "Function should not have been implemented."
+                );
 
                 // fn my_function() -> i32;
                 let function = &file.functions[2];
-                assert_eq!(function.get_name(), "my_function", "Wrong name for function.");
+                assert_eq!(
+                    function.get_name(),
+                    "my_function",
+                    "Wrong name for function."
+                );
                 assert_eq!(function.arguments.len(), 0, "Wrong number of arguments.");
                 assert_eq!(function.return_type, NLType::I32, "Wrong return type.");
-                assert_eq!(function.block.is_none(), true, "Function should not have been implemented.");
+                assert_eq!(
+                    function.block.is_none(),
+                    true,
+                    "Function should not have been implemented."
+                );
 
                 // fn my_function() -> i32 {}
                 let function = &file.functions[3];
-                assert_eq!(function.get_name(), "my_function", "Wrong name for function.");
+                assert_eq!(
+                    function.get_name(),
+                    "my_function",
+                    "Wrong name for function."
+                );
                 assert_eq!(function.arguments.len(), 0, "Wrong number of arguments.");
                 assert_eq!(function.return_type, NLType::I32, "Wrong return type.");
-                assert_eq!(function.block.is_some(), true, "Function should not have been implemented.");
+                assert_eq!(
+                    function.block.is_some(),
+                    true,
+                    "Function should not have been implemented."
+                );
 
                 assert_eq!(file.traits.len(), 0, "Wrong number of traits.");
                 assert_eq!(file.structs.len(), 0, "Wrong number of structs.");
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
@@ -549,14 +675,12 @@ mod root {
                 Ok(tuple) => {
                     let (s, method) = tuple;
                     match method {
-                        NLImplementor::Method(method) => {
-                            (s, method)
-                        },
+                        NLImplementor::Method(method) => (s, method),
                         _ => {
                             panic!("Did not get a method.");
                         }
                     }
-                },
+                }
                 Err(e) => {
                     match e {
                         nom::Err::Error(e) | nom::Err::Failure(e) => {
@@ -585,7 +709,11 @@ mod root {
             assert_eq!(method.name, "my_method", "Method had wrong name.");
             assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");
             assert_eq!(method.return_type, NLType::None, "Wrong return type.");
-            assert_eq!(method.block.is_none(), true, "Method should not have been implemented.");
+            assert_eq!(
+                method.block.is_none(),
+                true,
+                "Method should not have been implemented."
+            );
         }
 
         #[test]
@@ -598,7 +726,11 @@ mod root {
             assert_eq!(method.name, "my_method", "Method had wrong name.");
             assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");
             assert_eq!(method.return_type, NLType::I32, "Wrong return type.");
-            assert_eq!(method.block.is_none(), true, "Method should not have been implemented.");
+            assert_eq!(
+                method.block.is_none(),
+                true,
+                "Method should not have been implemented."
+            );
         }
 
         #[test]
@@ -611,7 +743,11 @@ mod root {
             assert_eq!(method.name, "my_method", "Method had wrong name.");
             assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");
             assert_eq!(method.return_type, NLType::None, "Wrong return type.");
-            assert_eq!(method.block.is_none(), false, "Method should have been implemented.");
+            assert_eq!(
+                method.block.is_none(),
+                false,
+                "Method should have been implemented."
+            );
         }
 
         #[test]
@@ -624,7 +760,11 @@ mod root {
             assert_eq!(method.name, "my_method", "Method had wrong name.");
             assert_eq!(method.arguments.len(), 0, "Wrong number of arguments.");
             assert_eq!(method.return_type, NLType::I32, "Wrong return type.");
-            assert_eq!(method.block.is_none(), false, "Method should have been implemented.");
+            assert_eq!(
+                method.block.is_none(),
+                false,
+                "Method should have been implemented."
+            );
         }
     }
 
@@ -637,14 +777,12 @@ mod root {
                 Ok(tuple) => {
                     let (s, method) = tuple;
                     match method {
-                        NLImplementor::Getter(getter) => {
-                            (s, getter)
-                        },
+                        NLImplementor::Getter(getter) => (s, getter),
                         _ => {
                             panic!("Did not get a getter.");
                         }
                     }
-                },
+                }
                 Err(e) => {
                     match e {
                         nom::Err::Error(e) | nom::Err::Failure(e) => {
@@ -669,9 +807,20 @@ mod root {
             let code = "get my_getter:default;";
             let (_, getter) = pretty_read_getter(code);
 
-            assert_eq!(getter.name, "my_getter", "Getter did not have expected name.");
-            assert_eq!(getter.block, NLEncapsulationBlock::Default, "Getter did not state use of default implementation.");
-            assert_eq!(getter.nl_type, NLType::None, "Getter did not have correct return type.");
+            assert_eq!(
+                getter.name, "my_getter",
+                "Getter did not have expected name."
+            );
+            assert_eq!(
+                getter.block,
+                NLEncapsulationBlock::Default,
+                "Getter did not state use of default implementation."
+            );
+            assert_eq!(
+                getter.nl_type,
+                NLType::None,
+                "Getter did not have correct return type."
+            );
         }
 
         #[test]
@@ -680,10 +829,25 @@ mod root {
             let code = "get my_getter(&self) -> i32 {}";
             let (_, getter) = pretty_read_getter(code);
 
-            assert_eq!(getter.name, "my_getter", "Getter did not have expected name.");
-            assert_ne!(getter.block, NLEncapsulationBlock::Default, "Getter did not state use of default implementation.");
-            assert_ne!(getter.block, NLEncapsulationBlock::None, "Getter did not state use of default implementation.");
-            assert_eq!(getter.nl_type, NLType::I32, "Getter did not have correct return type.");
+            assert_eq!(
+                getter.name, "my_getter",
+                "Getter did not have expected name."
+            );
+            assert_ne!(
+                getter.block,
+                NLEncapsulationBlock::Default,
+                "Getter did not state use of default implementation."
+            );
+            assert_ne!(
+                getter.block,
+                NLEncapsulationBlock::None,
+                "Getter did not state use of default implementation."
+            );
+            assert_eq!(
+                getter.nl_type,
+                NLType::I32,
+                "Getter did not have correct return type."
+            );
         }
 
         #[test]
@@ -692,9 +856,20 @@ mod root {
             let code = "get my_getter(&self) -> i32;";
             let (_, getter) = pretty_read_getter(code);
 
-            assert_eq!(getter.name, "my_getter", "Getter did not have expected name.");
-            assert_eq!(getter.block, NLEncapsulationBlock::None, "Getter did not state use of no implementation.");
-            assert_eq!(getter.nl_type, NLType::I32, "Getter did not have correct return type.");
+            assert_eq!(
+                getter.name, "my_getter",
+                "Getter did not have expected name."
+            );
+            assert_eq!(
+                getter.block,
+                NLEncapsulationBlock::None,
+                "Getter did not state use of no implementation."
+            );
+            assert_eq!(
+                getter.nl_type,
+                NLType::I32,
+                "Getter did not have correct return type."
+            );
         }
     }
 
@@ -707,14 +882,12 @@ mod root {
                 Ok(tuple) => {
                     let (s, method) = tuple;
                     match method {
-                        NLImplementor::Setter(setter) => {
-                            (s, setter)
-                        },
+                        NLImplementor::Setter(setter) => (s, setter),
                         _ => {
                             panic!("Did not get a setter.");
                         }
                     }
-                },
+                }
                 Err(e) => {
                     match e {
                         nom::Err::Error(e) | nom::Err::Failure(e) => {
@@ -739,9 +912,20 @@ mod root {
             let code = "set my_setter:default;";
             let (_, setter) = pretty_read_setter(code);
 
-            assert_eq!(setter.name, "my_setter", "Setter did not have expected name.");
-            assert_eq!(setter.block, NLEncapsulationBlock::Default, "Setter did not state use of default implementation.");
-            assert_eq!(setter.args.len(), 0, "Setter did not have correct arguments.");
+            assert_eq!(
+                setter.name, "my_setter",
+                "Setter did not have expected name."
+            );
+            assert_eq!(
+                setter.block,
+                NLEncapsulationBlock::Default,
+                "Setter did not state use of default implementation."
+            );
+            assert_eq!(
+                setter.args.len(),
+                0,
+                "Setter did not have correct arguments."
+            );
         }
 
         #[test]
@@ -750,14 +934,33 @@ mod root {
             let code = "set my_setter(value: i32) {}";
             let (_, setter) = pretty_read_setter(code);
 
-            assert_eq!(setter.name, "my_setter", "Getter did not have expected name.");
-            assert_ne!(setter.block, NLEncapsulationBlock::Default, "Setter did not state use of default implementation.");
-            assert_ne!(setter.block, NLEncapsulationBlock::None, "Setter did not state use of default implementation.");
+            assert_eq!(
+                setter.name, "my_setter",
+                "Getter did not have expected name."
+            );
+            assert_ne!(
+                setter.block,
+                NLEncapsulationBlock::Default,
+                "Setter did not state use of default implementation."
+            );
+            assert_ne!(
+                setter.block,
+                NLEncapsulationBlock::None,
+                "Setter did not state use of default implementation."
+            );
 
-            assert_eq!(setter.args.len(), 1, "Setter did not have correct number of arguments.");
+            assert_eq!(
+                setter.args.len(),
+                1,
+                "Setter did not have correct number of arguments."
+            );
             let arg = &setter.args[0];
             assert_eq!(arg.name, "value", "Variable did not have expected name.");
-            assert_eq!(arg.nl_type, NLType::I32, "Variable did not have expected type.");
+            assert_eq!(
+                arg.nl_type,
+                NLType::I32,
+                "Variable did not have expected type."
+            );
         }
 
         #[test]
@@ -766,13 +969,28 @@ mod root {
             let code = "set my_setter(value: i32);";
             let (_, setter) = pretty_read_setter(code);
 
-            assert_eq!(setter.name, "my_setter", "Setter did not have expected name.");
-            assert_eq!(setter.block, NLEncapsulationBlock::None, "Setter did not state use of no implementation.");
+            assert_eq!(
+                setter.name, "my_setter",
+                "Setter did not have expected name."
+            );
+            assert_eq!(
+                setter.block,
+                NLEncapsulationBlock::None,
+                "Setter did not state use of no implementation."
+            );
 
-            assert_eq!(setter.args.len(), 1, "Setter did not have correct number of arguments.");
+            assert_eq!(
+                setter.args.len(),
+                1,
+                "Setter did not have correct number of arguments."
+            );
             let arg = &setter.args[0];
             assert_eq!(arg.name, "value", "Variable did not have expected name.");
-            assert_eq!(arg.nl_type, NLType::I32, "Variable did not have expected type.");
+            assert_eq!(
+                arg.nl_type,
+                NLType::I32,
+                "Variable did not have expected type."
+            );
         }
     }
 
@@ -971,8 +1189,8 @@ mod executable_blocks {
             match constant {
                 OpConstant::Integer(constant, cast) => {
                     assert_eq!(constant, 5, "Constant had wrong value.");
-                    assert_eq!(cast, NLType::None, "Wrong type cast recommendation.");
-                },
+                    assert_eq!(cast, NLType::I32, "Wrong type cast recommendation.");
+                }
                 _ => panic!("Expected integer for constant type."),
             }
         }
@@ -985,16 +1203,16 @@ mod executable_blocks {
 
             match constant {
                 OpConstant::Integer(constant, cast) => {
-                    assert_eq!(constant, -5, "Constant had wrong value.");
-                    assert_eq!(cast, NLType::None, "Wrong type cast recommendation.");
-                },
+                    assert_eq!(constant as i64, -5, "Constant had wrong value.");
+                    assert_eq!(cast, NLType::I32, "Wrong type cast recommendation.");
+                }
                 _ => panic!("Expected i32 for constant type."),
             }
         }
 
         #[test]
-        fn casted_number() {
-            let code = "5 as i64";
+        fn typed_number() {
+            let code = "5i64";
             let constant = pretty_read(code, &read_constant);
             let constant = unwrap_constant(constant);
 
@@ -1002,22 +1220,22 @@ mod executable_blocks {
                 OpConstant::Integer(constant, cast) => {
                     assert_eq!(constant, 5, "Constant had wrong value.");
                     assert_eq!(cast, NLType::I64, "Wrong type cast recommendation.");
-                },
+                }
                 _ => panic!("Expected i64 for constant type."),
             }
         }
 
         #[test]
-        fn negative_casted_number() {
-            let code = "-5 as i64";
+        fn negative_typed_number() {
+            let code = "-5i64";
             let constant = pretty_read(code, &read_constant);
             let constant = unwrap_constant(constant);
 
             match constant {
                 OpConstant::Integer(constant, cast) => {
-                    assert_eq!(constant, -5, "Constant had wrong value.");
+                    assert_eq!(constant as i64, -5, "Constant had wrong value.");
                     assert_eq!(cast, NLType::I64, "Wrong type cast recommendation.");
-                },
+                }
                 _ => panic!("Expected i64 for constant type."),
             }
         }
@@ -1031,15 +1249,15 @@ mod executable_blocks {
             match constant {
                 OpConstant::Float(constant, cast) => {
                     assert_eq!(constant, 5.5, "Constant had wrong value.");
-                    assert_eq!(cast, NLType::None, "Wrong type cast recommendation.");
-                },
+                    assert_eq!(cast, NLType::F32, "Wrong type cast recommendation.");
+                }
                 _ => panic!("Expected float for constant type."),
             }
         }
 
         #[test]
-        fn float_with_cast() {
-            let code = "5.5 as f64";
+        fn float_with_type() {
+            let code = "5.5f64";
             let constant = pretty_read(code, &read_constant);
             let constant = unwrap_constant(constant);
 
@@ -1047,7 +1265,7 @@ mod executable_blocks {
                 OpConstant::Float(constant, cast) => {
                     assert_eq!(constant, 5.5, "Constant had wrong value.");
                     assert_eq!(cast, NLType::F64, "Wrong type cast recommendation.");
-                },
+                }
                 _ => panic!("Expected float for constant type."),
             }
         }
@@ -1061,7 +1279,7 @@ mod executable_blocks {
             match constant {
                 OpConstant::Boolean(constant) => {
                     assert_eq!(constant, true, "Constant had wrong value.");
-                },
+                }
                 _ => panic!("Expected boolean for constant type."),
             }
         }
@@ -1075,7 +1293,7 @@ mod executable_blocks {
             match constant {
                 OpConstant::Boolean(constant) => {
                     assert_eq!(constant, false, "Constant had wrong value.");
-                },
+                }
                 _ => panic!("Expected boolean for constant type."),
             }
         }
@@ -1089,7 +1307,7 @@ mod executable_blocks {
             match constant {
                 OpConstant::String(string) => {
                     assert_eq!(string, "A simple string.", "Constant had wrong value.");
-                },
+                }
                 _ => panic!("Expected string for constant type."),
             }
         }
@@ -1106,8 +1324,8 @@ mod executable_blocks {
             match operation {
                 NLOperation::VariableAccess(access) => {
                     assert_eq!(access.name, "bah", "Variable had wrong name.");
-                },
-                _ => panic!("Expected variable access operation, got {:?}", operation)
+                }
+                _ => panic!("Expected variable access operation, got {:?}", operation),
             }
         }
     }
@@ -1123,7 +1341,7 @@ mod executable_blocks {
             match tuple {
                 NLOperation::Tuple(tuple) => {
                     assert_eq!(tuple.len(), 0, "Wrong number of items in tuple.");
-                },
+                }
                 _ => panic!("Expected none."),
             }
         }
@@ -1136,8 +1354,12 @@ mod executable_blocks {
             match tuple {
                 NLOperation::Tuple(tuple) => {
                     assert_eq!(tuple.len(), 1, "Wrong number of items in tuple.");
-                    assert_eq!(tuple[0], NLOperation::Constant(OpConstant::Integer(1, NLType::None)), "Wrong value used for first value.");
-                },
+                    assert_eq!(
+                        tuple[0],
+                        NLOperation::Constant(OpConstant::Integer(1, NLType::I32)),
+                        "Wrong value used for first value."
+                    );
+                }
                 _ => panic!("Expected none."),
             }
         }
@@ -1150,9 +1372,17 @@ mod executable_blocks {
             match tuple {
                 NLOperation::Tuple(tuple) => {
                     assert_eq!(tuple.len(), 2, "Wrong number of items in tuple.");
-                    assert_eq!(tuple[0], NLOperation::Constant(OpConstant::Integer(1, NLType::None)), "Wrong value used for first value.");
-                    assert_eq!(tuple[1], NLOperation::Constant(OpConstant::Integer(2, NLType::None)), "Wrong value used for second value.");
-                },
+                    assert_eq!(
+                        tuple[0],
+                        NLOperation::Constant(OpConstant::Integer(1, NLType::I32)),
+                        "Wrong value used for first value."
+                    );
+                    assert_eq!(
+                        tuple[1],
+                        NLOperation::Constant(OpConstant::Integer(2, NLType::I32)),
+                        "Wrong value used for second value."
+                    );
+                }
                 _ => panic!("Expected none."),
             }
         }
@@ -1165,10 +1395,22 @@ mod executable_blocks {
             match tuple {
                 NLOperation::Tuple(tuple) => {
                     assert_eq!(tuple.len(), 3, "Wrong number of items in tuple.");
-                    assert_eq!(tuple[0], NLOperation::Constant(OpConstant::Integer(1, NLType::None)), "Wrong value used for first value.");
-                    assert_eq!(tuple[1], NLOperation::Constant(OpConstant::Integer(2, NLType::None)), "Wrong value used for second value.");
-                    assert_eq!(tuple[2], NLOperation::Constant(OpConstant::Integer(3, NLType::None)), "Wrong value used for third value.");
-                },
+                    assert_eq!(
+                        tuple[0],
+                        NLOperation::Constant(OpConstant::Integer(1, NLType::I32)),
+                        "Wrong value used for first value."
+                    );
+                    assert_eq!(
+                        tuple[1],
+                        NLOperation::Constant(OpConstant::Integer(2, NLType::I32)),
+                        "Wrong value used for second value."
+                    );
+                    assert_eq!(
+                        tuple[2],
+                        NLOperation::Constant(OpConstant::Integer(3, NLType::I32)),
+                        "Wrong value used for third value."
+                    );
+                }
                 _ => panic!("Expected none."),
             }
         }
@@ -1185,18 +1427,27 @@ mod executable_blocks {
             match operation {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
-                    assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignments.len(), 0, "Unexpected type specified.");
+                    assert_eq!(
+                        assign.to_assign.len(),
+                        1,
+                        "Wrong number of values being assigned."
+                    );
+                    assert_eq!(
+                        assign.type_assignments.len(),
+                        0,
+                        "Unexpected type specified."
+                    );
 
-                    assert_eq!(assign.assignment,
-                               Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
+                    assert_eq!(
+                        assign.assignment,
+                        Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::I32))),
+                        "Wrong assignment."
+                    );
 
                     let variable = &assign.to_assign[0];
 
                     assert_eq!(variable.name, "five", "Wrong name given to variable.");
-
-
-                },
+                }
                 _ => panic!("Expected assignment operation."),
             };
         }
@@ -1209,18 +1460,30 @@ mod executable_blocks {
             match operation {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
-                    assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignments.len(), 0, "Unexpected type specified.");
+                    assert_eq!(
+                        assign.to_assign.len(),
+                        1,
+                        "Wrong number of values being assigned."
+                    );
+                    assert_eq!(
+                        assign.type_assignments.len(),
+                        0,
+                        "Unexpected type specified."
+                    );
 
-                    assert_eq!(assign.assignment,
-                               Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
+                    assert_eq!(
+                        assign.assignment,
+                        Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::I32))),
+                        "Wrong assignment."
+                    );
 
                     let variable = &assign.to_assign[0];
 
-                    assert_eq!(variable.name, "numbers.five", "Wrong name given to variable.");
-
-
-                },
+                    assert_eq!(
+                        variable.name, "numbers.five",
+                        "Wrong name given to variable."
+                    );
+                }
                 _ => panic!("Expected assignment operation."),
             };
         }
@@ -1233,18 +1496,27 @@ mod executable_blocks {
             match operation {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
-                    assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignments[0], NLType::I32, "Unexpected type specified.");
+                    assert_eq!(
+                        assign.to_assign.len(),
+                        1,
+                        "Wrong number of values being assigned."
+                    );
+                    assert_eq!(
+                        assign.type_assignments[0],
+                        NLType::I32,
+                        "Unexpected type specified."
+                    );
 
-                    assert_eq!(assign.assignment,
-                               Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
+                    assert_eq!(
+                        assign.assignment,
+                        Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::I32))),
+                        "Wrong assignment."
+                    );
 
                     let variable = &assign.to_assign[0];
 
                     assert_eq!(variable.name, "five", "Wrong name given to variable.");
-
-
-                },
+                }
                 _ => panic!("Expected assignment operation."),
             };
         }
@@ -1257,18 +1529,30 @@ mod executable_blocks {
             match operation {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
-                    assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignments[0], NLType::I32, "Unexpected type specified.");
+                    assert_eq!(
+                        assign.to_assign.len(),
+                        1,
+                        "Wrong number of values being assigned."
+                    );
+                    assert_eq!(
+                        assign.type_assignments[0],
+                        NLType::I32,
+                        "Unexpected type specified."
+                    );
 
-                    assert_eq!(assign.assignment,
-                               Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
+                    assert_eq!(
+                        assign.assignment,
+                        Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::I32))),
+                        "Wrong assignment."
+                    );
 
                     let variable = &assign.to_assign[0];
 
-                    assert_eq!(variable.name, "numbers.five", "Wrong name given to variable.");
-
-
-                },
+                    assert_eq!(
+                        variable.name, "numbers.five",
+                        "Wrong name given to variable."
+                    );
+                }
                 _ => panic!("Expected assignment operation."),
             };
         }
@@ -1281,26 +1565,32 @@ mod executable_blocks {
             match operation {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
-                    assert_eq!(assign.to_assign.len(), 2, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignments.len(), 0, "Unexpected type specified.");
-
-                    assert_eq!(assign.assignment,
-                               Box::new(NLOperation::Tuple(vec![
-                                    NLOperation::Constant(OpConstant::Integer(4, NLType::None)),
-                                    NLOperation::Constant(OpConstant::Integer(5, NLType::None))
-                               ])),
-                               "Wrong assignment."
+                    assert_eq!(
+                        assign.to_assign.len(),
+                        2,
+                        "Wrong number of values being assigned."
+                    );
+                    assert_eq!(
+                        assign.type_assignments.len(),
+                        0,
+                        "Unexpected type specified."
                     );
 
+                    assert_eq!(
+                        assign.assignment,
+                        Box::new(NLOperation::Tuple(vec![
+                            NLOperation::Constant(OpConstant::Integer(4, NLType::I32)),
+                            NLOperation::Constant(OpConstant::Integer(5, NLType::I32))
+                        ])),
+                        "Wrong assignment."
+                    );
 
                     let variable = &assign.to_assign[0];
                     assert_eq!(variable.name, "fore", "Wrong name given to variable.");
 
                     let variable = &assign.to_assign[1];
                     assert_eq!(variable.name, "five", "Wrong name given to variable.");
-
-
-                },
+                }
                 _ => panic!("Expected assignment operation."),
             };
         }
@@ -1313,26 +1603,38 @@ mod executable_blocks {
             match operation {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, true, "Assignment should have been  new.");
-                    assert_eq!(assign.to_assign.len(), 2, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignments.len(), 0, "Unexpected type specified.");
-
-                    assert_eq!(assign.assignment,
-                               Box::new(NLOperation::Tuple(vec![
-                                    NLOperation::Constant(OpConstant::Integer(4, NLType::None)),
-                                    NLOperation::Constant(OpConstant::Integer(5, NLType::None))
-                               ])),
-                               "Wrong assignment."
+                    assert_eq!(
+                        assign.to_assign.len(),
+                        2,
+                        "Wrong number of values being assigned."
+                    );
+                    assert_eq!(
+                        assign.type_assignments.len(),
+                        0,
+                        "Unexpected type specified."
                     );
 
+                    assert_eq!(
+                        assign.assignment,
+                        Box::new(NLOperation::Tuple(vec![
+                            NLOperation::Constant(OpConstant::Integer(4, NLType::I32)),
+                            NLOperation::Constant(OpConstant::Integer(5, NLType::I32))
+                        ])),
+                        "Wrong assignment."
+                    );
 
                     let variable = &assign.to_assign[0];
-                    assert_eq!(variable.name, "numbers.fore", "Wrong name given to variable.");
+                    assert_eq!(
+                        variable.name, "numbers.fore",
+                        "Wrong name given to variable."
+                    );
 
                     let variable = &assign.to_assign[1];
-                    assert_eq!(variable.name, "numbers.five", "Wrong name given to variable.");
-
-
-                },
+                    assert_eq!(
+                        variable.name, "numbers.five",
+                        "Wrong name given to variable."
+                    );
+                }
                 _ => panic!("Expected assignment operation."),
             };
         }
@@ -1345,18 +1647,27 @@ mod executable_blocks {
             match operation {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, false, "Assignment should have been  new.");
-                    assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignments.len(), 0, "Unexpected type specified.");
+                    assert_eq!(
+                        assign.to_assign.len(),
+                        1,
+                        "Wrong number of values being assigned."
+                    );
+                    assert_eq!(
+                        assign.type_assignments.len(),
+                        0,
+                        "Unexpected type specified."
+                    );
 
-                    assert_eq!(assign.assignment,
-                               Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
+                    assert_eq!(
+                        assign.assignment,
+                        Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::I32))),
+                        "Wrong assignment."
+                    );
 
                     let variable = &assign.to_assign[0];
 
                     assert_eq!(variable.name, "five", "Wrong name given to variable.");
-
-
-                },
+                }
                 _ => panic!("Expected assignment operation."),
             };
         }
@@ -1369,18 +1680,30 @@ mod executable_blocks {
             match operation {
                 NLOperation::Assign(assign) => {
                     assert_eq!(assign.is_new, false, "Assignment should have been  new.");
-                    assert_eq!(assign.to_assign.len(), 1, "Wrong number of values being assigned.");
-                    assert_eq!(assign.type_assignments.len(), 0, "Unexpected type specified.");
+                    assert_eq!(
+                        assign.to_assign.len(),
+                        1,
+                        "Wrong number of values being assigned."
+                    );
+                    assert_eq!(
+                        assign.type_assignments.len(),
+                        0,
+                        "Unexpected type specified."
+                    );
 
-                    assert_eq!(assign.assignment,
-                               Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::None))), "Wrong assignment.");
+                    assert_eq!(
+                        assign.assignment,
+                        Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::I32))),
+                        "Wrong assignment."
+                    );
 
                     let variable = &assign.to_assign[0];
 
-                    assert_eq!(variable.name, "numbers.five", "Wrong name given to variable.");
-
-
-                },
+                    assert_eq!(
+                        variable.name, "numbers.five",
+                        "Wrong name given to variable."
+                    );
+                }
                 _ => panic!("Expected assignment operation."),
             };
         }
@@ -1401,8 +1724,16 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareEqual);
 
-                assert_eq!(unwrap_constant_number(a), 2, "Wrong number for left operand.");
-                assert_eq!(unwrap_constant_number(b), 3, "Wrong number for right operand.");
+                assert_eq!(
+                    unwrap_constant_number(a),
+                    2,
+                    "Wrong number for left operand."
+                );
+                assert_eq!(
+                    unwrap_constant_number(b),
+                    3,
+                    "Wrong number for right operand."
+                );
             }
 
             #[test]
@@ -1412,8 +1743,16 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareNotEqual);
 
-                assert_eq!(unwrap_constant_number(a), 2, "Wrong number for left operand.");
-                assert_eq!(unwrap_constant_number(b), 3, "Wrong number for right operand.");
+                assert_eq!(
+                    unwrap_constant_number(a),
+                    2,
+                    "Wrong number for left operand."
+                );
+                assert_eq!(
+                    unwrap_constant_number(b),
+                    3,
+                    "Wrong number for right operand."
+                );
             }
 
             #[test]
@@ -1423,8 +1762,16 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareGreater);
 
-                assert_eq!(unwrap_constant_number(a), 2, "Wrong number for left operand.");
-                assert_eq!(unwrap_constant_number(b), 3, "Wrong number for right operand.");
+                assert_eq!(
+                    unwrap_constant_number(a),
+                    2,
+                    "Wrong number for left operand."
+                );
+                assert_eq!(
+                    unwrap_constant_number(b),
+                    3,
+                    "Wrong number for right operand."
+                );
             }
 
             #[test]
@@ -1434,8 +1781,16 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareLess);
 
-                assert_eq!(unwrap_constant_number(a), 2, "Wrong number for left operand.");
-                assert_eq!(unwrap_constant_number(b), 3, "Wrong number for right operand.");
+                assert_eq!(
+                    unwrap_constant_number(a),
+                    2,
+                    "Wrong number for left operand."
+                );
+                assert_eq!(
+                    unwrap_constant_number(b),
+                    3,
+                    "Wrong number for right operand."
+                );
             }
 
             #[test]
@@ -1445,8 +1800,16 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareGreaterEqual);
 
-                assert_eq!(unwrap_constant_number(a), 2, "Wrong number for left operand.");
-                assert_eq!(unwrap_constant_number(b), 3, "Wrong number for right operand.");
+                assert_eq!(
+                    unwrap_constant_number(a),
+                    2,
+                    "Wrong number for left operand."
+                );
+                assert_eq!(
+                    unwrap_constant_number(b),
+                    3,
+                    "Wrong number for right operand."
+                );
             }
 
             #[test]
@@ -1456,8 +1819,16 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareLessEqual);
 
-                assert_eq!(unwrap_constant_number(a), 2, "Wrong number for left operand.");
-                assert_eq!(unwrap_constant_number(b), 3, "Wrong number for right operand.");
+                assert_eq!(
+                    unwrap_constant_number(a),
+                    2,
+                    "Wrong number for left operand."
+                );
+                assert_eq!(
+                    unwrap_constant_number(b),
+                    3,
+                    "Wrong number for right operand."
+                );
             }
 
             // TODO add tests for proper error messages in =< and => conditions.
@@ -1535,6 +1906,7 @@ mod executable_blocks {
             fn and() {
                 let code = "1 & 2";
                 let operation = pretty_read(code, &read_operation);
+
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::BitAnd);
 
@@ -1610,7 +1982,7 @@ mod executable_blocks {
 
                 assert_eq!(tuple.len(), 1, "Tuple is wrong size.");
                 let value = unwrap_constant_number(&tuple[0]);
-                assert_eq!(value, -5, "Wrong value for constant.");
+                assert_eq!(value as i64, -5, "Wrong value for constant.");
             }
 
             #[test]
@@ -1707,9 +2079,21 @@ mod executable_blocks {
             let false_block = &statement.false_block;
 
             assert_eq!(condition, true, "Wrong condition value read.");
-            assert_eq!(true_block.operations.len(), 1, "Wrong number of operations in true block.");
-            assert_eq!(unwrap_constant_boolean(&true_block.operations[0]), false, "Expected a false boolean in the true block.");
-            assert_eq!(false_block.operations.len(), 0, "Wrong number of operations in false block.");
+            assert_eq!(
+                true_block.operations.len(),
+                1,
+                "Wrong number of operations in true block."
+            );
+            assert_eq!(
+                unwrap_constant_boolean(&true_block.operations[0]),
+                false,
+                "Expected a false boolean in the true block."
+            );
+            assert_eq!(
+                false_block.operations.len(),
+                0,
+                "Wrong number of operations in false block."
+            );
         }
 
         #[test]
@@ -1723,10 +2107,26 @@ mod executable_blocks {
             let false_block = &statement.false_block;
 
             assert_eq!(condition, true, "Wrong condition value read.");
-            assert_eq!(true_block.operations.len(), 1, "Wrong number of operations in true block.");
-            assert_eq!(unwrap_constant_boolean(&true_block.operations[0]), false, "Expected a false boolean in the true block.");
-            assert_eq!(false_block.operations.len(), 1, "Wrong number of operations in false block.");
-            assert_eq!(unwrap_constant_boolean(&false_block.operations[0]), true, "Expected a true boolean in the true block.");
+            assert_eq!(
+                true_block.operations.len(),
+                1,
+                "Wrong number of operations in true block."
+            );
+            assert_eq!(
+                unwrap_constant_boolean(&true_block.operations[0]),
+                false,
+                "Expected a false boolean in the true block."
+            );
+            assert_eq!(
+                false_block.operations.len(),
+                1,
+                "Wrong number of operations in false block."
+            );
+            assert_eq!(
+                unwrap_constant_boolean(&false_block.operations[0]),
+                true,
+                "Expected a true boolean in the true block."
+            );
         }
 
         #[test]
@@ -1738,7 +2138,6 @@ mod executable_blocks {
             let condition = &statement.condition;
             let operator = unwrap_to!(**condition => NLOperation::Operator);
             let (op_a, op_b) = unwrap_to!(operator => OpOperator::LogicalAnd);
-            
             let op_a = unwrap_constant_boolean(op_a);
             let op_b = unwrap_constant_boolean(op_b);
 
@@ -1756,8 +2155,16 @@ mod executable_blocks {
             let operation = pretty_read(code, &read_operation);
             let block = unwrap_to!(operation => NLOperation::Loop);
 
-            assert_eq!(block.operations.len(), 1, "Wrong number of operations in block.");
-            assert_eq!(unwrap_constant_boolean(&block.operations[0]), true, "Expected true for boolean value in block.");
+            assert_eq!(
+                block.operations.len(),
+                1,
+                "Wrong number of operations in block."
+            );
+            assert_eq!(
+                unwrap_constant_boolean(&block.operations[0]),
+                true,
+                "Expected true for boolean value in block."
+            );
         }
 
         #[test]
@@ -1766,10 +2173,22 @@ mod executable_blocks {
             let operation = pretty_read(code, &read_operation);
             let while_loop = unwrap_to!(operation => NLOperation::WhileLoop);
 
-            assert_eq!(unwrap_constant_boolean(&while_loop.condition), true, "Expected true value for condition.");
+            assert_eq!(
+                unwrap_constant_boolean(&while_loop.condition),
+                true,
+                "Expected true value for condition."
+            );
 
-            assert_eq!(while_loop.block.operations.len(), 1, "Wrong number of operations in block.");
-            assert_eq!(unwrap_constant_boolean(&while_loop.block.operations[0]), false, "Expected false for boolean value in block.");
+            assert_eq!(
+                while_loop.block.operations.len(),
+                1,
+                "Wrong number of operations in block."
+            );
+            assert_eq!(
+                unwrap_constant_boolean(&while_loop.block.operations[0]),
+                false,
+                "Expected false for boolean value in block."
+            );
         }
 
         #[test]
@@ -1782,11 +2201,27 @@ mod executable_blocks {
             let operator = unwrap_to!(**condition => NLOperation::Operator);
             let (left, right) = unwrap_to!(operator => OpOperator::LogicalAnd);
 
-            assert_eq!(unwrap_constant_boolean(&left), true, "Expected true for left operand of and.");
-            assert_eq!(unwrap_constant_boolean(&right), false, "Expected false for right operand of and.");
+            assert_eq!(
+                unwrap_constant_boolean(&left),
+                true,
+                "Expected true for left operand of and."
+            );
+            assert_eq!(
+                unwrap_constant_boolean(&right),
+                false,
+                "Expected false for right operand of and."
+            );
 
-            assert_eq!(while_loop.block.operations.len(), 1, "Wrong number of operations in block.");
-            assert_eq!(unwrap_constant_boolean(&while_loop.block.operations[0]), false, "Expected false for boolean value in block.");
+            assert_eq!(
+                while_loop.block.operations.len(),
+                1,
+                "Wrong number of operations in block."
+            );
+            assert_eq!(
+                unwrap_constant_boolean(&while_loop.block.operations[0]),
+                false,
+                "Expected false for boolean value in block."
+            );
         }
 
         #[test]
@@ -1795,10 +2230,25 @@ mod executable_blocks {
             let operation = pretty_read(code, &read_operation);
             let for_loop = unwrap_to!(operation => NLOperation::ForLoop);
 
-            assert_eq!(for_loop.variable.name, "bah", "Wrong name given to variable.");
-            assert_eq!(unwrap_constant_boolean(&for_loop.iterator), false, "Expected false for range.");
-            assert_eq!(for_loop.block.operations.len(), 1, "Wrong number of operations in block.");
-            assert_eq!(unwrap_constant_boolean(&for_loop.block.operations[0]), true, "Expected true for boolean value in block.");
+            assert_eq!(
+                for_loop.variable.name, "bah",
+                "Wrong name given to variable."
+            );
+            assert_eq!(
+                unwrap_constant_boolean(&for_loop.iterator),
+                false,
+                "Expected false for range."
+            );
+            assert_eq!(
+                for_loop.block.operations.len(),
+                1,
+                "Wrong number of operations in block."
+            );
+            assert_eq!(
+                unwrap_constant_boolean(&for_loop.block.operations[0]),
+                true,
+                "Expected true for boolean value in block."
+            );
         }
 
         #[test]
@@ -1809,8 +2259,8 @@ mod executable_blocks {
             match operation {
                 NLOperation::Break => {
                     // We pass. That's it.
-                },
-                _ => panic!("Expected break operation, got {:?}", operation)
+                }
+                _ => panic!("Expected break operation, got {:?}", operation),
             }
         }
     }
@@ -1824,7 +2274,10 @@ mod executable_blocks {
             let operation = pretty_read(code, &read_operation);
             let nl_match = unwrap_to!(operation => NLOperation::Match);
 
-            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+            assert_eq!(
+                unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(),
+                "variable"
+            );
             assert_eq!(nl_match.branches.len(), 0);
         }
 
@@ -1834,7 +2287,10 @@ mod executable_blocks {
             let operation = pretty_read(code, &read_operation);
             let nl_match = unwrap_to!(operation => NLOperation::Match);
 
-            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+            assert_eq!(
+                unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(),
+                "variable"
+            );
 
             let branches = &nl_match.branches;
             assert_eq!(branches.len(), 1);
@@ -1855,7 +2311,10 @@ mod executable_blocks {
             let operation = pretty_read(code, &read_operation);
             let nl_match = unwrap_to!(operation => NLOperation::Match);
 
-            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+            assert_eq!(
+                unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(),
+                "variable"
+            );
 
             let branches = &nl_match.branches;
             assert_eq!(branches.len(), 1);
@@ -1876,7 +2335,10 @@ mod executable_blocks {
             let operation = pretty_read(code, &read_operation);
             let nl_match = unwrap_to!(operation => NLOperation::Match);
 
-            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+            assert_eq!(
+                unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(),
+                "variable"
+            );
 
             let branches = &nl_match.branches;
             assert_eq!(branches.len(), 1);
@@ -1899,7 +2361,10 @@ mod executable_blocks {
             let operation = pretty_read(code, &read_operation);
             let nl_match = unwrap_to!(operation => NLOperation::Match);
 
-            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+            assert_eq!(
+                unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(),
+                "variable"
+            );
 
             let branches = &nl_match.branches;
             assert_eq!(branches.len(), 1);
@@ -1923,7 +2388,10 @@ mod executable_blocks {
             let operation = pretty_read(code, &read_operation);
             let nl_match = unwrap_to!(operation => NLOperation::Match);
 
-            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+            assert_eq!(
+                unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(),
+                "variable"
+            );
 
             let branches = &nl_match.branches;
             assert_eq!(branches.len(), 2);
@@ -1953,7 +2421,10 @@ mod executable_blocks {
             let operation = pretty_read(code, &read_operation);
             let nl_match = unwrap_to!(operation => NLOperation::Match);
 
-            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+            assert_eq!(
+                unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(),
+                "variable"
+            );
 
             let branches = &nl_match.branches;
             assert_eq!(branches.len(), 2);
@@ -1983,7 +2454,10 @@ mod executable_blocks {
             let operation = pretty_read(code, &read_operation);
             let nl_match = unwrap_to!(operation => NLOperation::Match);
 
-            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+            assert_eq!(
+                unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(),
+                "variable"
+            );
 
             let branches = &nl_match.branches;
             assert_eq!(branches.len(), 1);
@@ -1993,7 +2467,7 @@ mod executable_blocks {
             match branch {
                 OpConstant::Integer(value, _) => {
                     assert_eq!(*value, 42);
-                },
+                }
                 _ => {
                     panic!("Expected integer for constant type, got: {:?}");
                 }
@@ -2009,7 +2483,10 @@ mod executable_blocks {
             println!("{:?}", operation);
             let nl_match = unwrap_to!(operation => NLOperation::Match);
 
-            assert_eq!(unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(), "variable");
+            assert_eq!(
+                unwrap_to!(*nl_match.input => NLOperation::VariableAccess).get_name(),
+                "variable"
+            );
 
             let branches = &nl_match.branches;
             assert_eq!(branches.len(), 1);
