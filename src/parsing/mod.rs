@@ -320,7 +320,8 @@ enum RootDeceleration<'a> {
 pub enum OpConstant<'a> {
     Boolean(bool),
     Integer(u64, NLType<'a>),
-    Float(f64, NLType<'a>),
+    Float32(f32),
+    Float64(f64),
     String(&'a str),
     // TODO add support for defining a constant enum.
 }
@@ -664,8 +665,17 @@ fn read_numerical_constant(input: &str) -> ParserResult<OpConstant> {
         }
     } else {
         // Has to be a floating point number.
-        let (_, value) = parse_number::<f64>(number)?;
-        Ok((input, OpConstant::Float(value, nl_type)))
+        match nl_type {
+            NLType::F32 => {
+                let (_, value) = parse_number::<f32>(number)?;
+                Ok((input, OpConstant::Float32(value)))
+            }
+            NLType::F64 => {
+                let (_, value) = parse_number::<f64>(number)?;
+                Ok((input, OpConstant::Float64(value)))
+            }
+            _ => unreachable!(),
+        }
     }
 }
 

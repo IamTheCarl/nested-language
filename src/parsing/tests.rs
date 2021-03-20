@@ -1247,11 +1247,10 @@ mod executable_blocks {
             let constant = unwrap_constant(constant);
 
             match constant {
-                OpConstant::Float(constant, cast) => {
+                OpConstant::Float32(constant) => {
                     assert_eq!(constant, 5.5, "Constant had wrong value.");
-                    assert_eq!(cast, NLType::F32, "Wrong type cast recommendation.");
                 }
-                _ => panic!("Expected float for constant type."),
+                _ => panic!("Expected float32 for constant type."),
             }
         }
 
@@ -1262,11 +1261,10 @@ mod executable_blocks {
             let constant = unwrap_constant(constant);
 
             match constant {
-                OpConstant::Float(constant, cast) => {
+                OpConstant::Float64(constant) => {
                     assert_eq!(constant, 5.5, "Constant had wrong value.");
-                    assert_eq!(cast, NLType::F64, "Wrong type cast recommendation.");
                 }
-                _ => panic!("Expected float for constant type."),
+                _ => panic!("Expected float64 for constant type."),
             }
         }
 
