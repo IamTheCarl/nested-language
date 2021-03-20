@@ -1,36 +1,19 @@
-
-use std::fmt::Formatter;
-
 use nom::Err as NomErr;
-use nom::sequence::delimited;
-use nom::IResult;
-use nom::bytes::complete::take_while1;
-use nom::bytes::complete::tag;
-use nom::character::complete::alphanumeric0;
-use nom::error::VerboseError;
-use nom::error::convert_error;
-use nom::combinator::recognize;
-use nom::character::complete::multispace0;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
-use nom::branch::alt;
-use nom::sequence::preceded;
-use nom::sequence::terminated;
-use nom::bytes::complete::take_until;
-use nom::multi::many0_count;
-use nom::combinator::value;
-use nom::character::complete::char;
-use nom::error::VerboseErrorKind;
-use nom::multi::many0;
-use nom::multi::many1;
-use nom::sequence::tuple;
-use nom::combinator::opt;
-use nom::character::complete::alphanumeric1;
-use nom::bytes::complete::take_while;
-use nom::character::is_alphanumeric;
-use nom::character::complete::alpha1;
-use nom::character::complete::digit1;
+use nom::{
+    branch::alt,
+    bytes::complete::{tag, take_until, take_while, take_while1},
+    character::{
+        complete::{alpha1, alphanumeric0, alphanumeric1, char, digit1, multispace0},
+        is_alphanumeric,
+    },
+    combinator::{opt, recognize, value},
+    error::{convert_error, VerboseError, VerboseErrorKind},
+    multi::{many0, many0_count, many1},
+    sequence::tuple,
+    sequence::{delimited, preceded, terminated},
+    IResult,
+};
+use std::{fmt::Formatter, fs::File, io::Read, path::Path};
 
 // All tests are kept in their own module.
 #[cfg(test)]
@@ -38,13 +21,22 @@ mod tests;
 
 pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
-#[derive(PartialOrd, PartialEq, Debug)]
+// TODO replace all the getters with reference handles and mut_handles.
+
+#[derive(PartialOrd, PartialEq, Debug, Clone)]
 pub enum NLType<'a> {
     None,
     Boolean,
-    I8, I16, I32, I64,
-    U8, U16, U32, U64,
-    F32, F64,
+    I8,
+    I16,
+    I32,
+    I64,
+    U8,
+    U16,
+    U32,
+    U64,
+    F32,
+    F64,
     OwnedString,
     BorrowedString,
     Tuple(Vec<NLType<'a>>),
@@ -59,14 +51,35 @@ pub enum NLType<'a> {
     MutableSelfReference,
 }
 
+impl<'a> NLType<'a> {
+    pub fn num_bits(&self) -> u16 {
+        match self {
+            NLType::Boolean => 1,
+            NLType::I8 => 8,
+            NLType::I16 => 16,
+            NLType::I32 => 32,
+            NLType::I64 => 64,
+            NLType::U8 => 8,
+            NLType::U16 => 16,
+            NLType::U32 => 32,
+            NLType::U64 => 64,
+            _ => 0,
+        }
+    }
+}
+
 pub struct NLStructVariable<'a> {
     name: &'a str,
     my_type: NLType<'a>,
 }
 
 impl<'a> NLStructVariable<'a> {
-    pub fn get_name(&self) -> &str { &self.name }
-    pub fn get_type(&self) -> &NLType { &self.my_type }
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+    pub fn get_type(&self) -> &NLType {
+        &self.my_type
+    }
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
@@ -76,8 +89,12 @@ pub struct NLArgument<'a> {
 }
 
 impl<'a> NLArgument<'a> {
-    pub fn get_name(&self) -> &str { &self.name }
-    pub fn get_type(&self) -> &NLType { &self.nl_type }
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+    pub fn get_type(&self) -> &NLType {
+        &self.nl_type
+    }
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
@@ -105,10 +122,18 @@ pub enum NLImplementor<'a> {
 }
 
 impl<'a> NLFunction<'a> {
-    pub fn get_name(&self) -> &str { &self.name }
-    pub fn get_arguments(&self) -> &Vec<NLArgument> { &self.arguments }
-    pub fn get_return_type(&self) -> &NLType { &self.return_type }
-    pub fn get_block(&self) -> &Option<NLBlock> { &self.block }
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+    pub fn get_arguments(&self) -> &Vec<NLArgument> {
+        &self.arguments
+    }
+    pub fn get_return_type(&self) -> &NLType {
+        &self.return_type
+    }
+    pub fn get_block(&self) -> &Option<NLBlock> {
+        &self.block
+    }
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
@@ -126,10 +151,18 @@ pub struct NLGetter<'a> {
 }
 
 impl<'a> NLGetter<'a> {
-    pub fn get_name(&self) -> &str { &self.name }
-    pub fn get_arguments(&self) -> &Vec<NLArgument> { &self.args }
-    pub fn get_type(&self) -> &NLType { &self.nl_type }
-    pub fn get_block(&self) -> &NLEncapsulationBlock { &self.block }
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+    pub fn get_arguments(&self) -> &Vec<NLArgument> {
+        &self.args
+    }
+    pub fn get_type(&self) -> &NLType {
+        &self.nl_type
+    }
+    pub fn get_block(&self) -> &NLEncapsulationBlock {
+        &self.block
+    }
 }
 
 pub struct NLSetter<'a> {
@@ -139,9 +172,15 @@ pub struct NLSetter<'a> {
 }
 
 impl<'a> NLSetter<'a> {
-    pub fn get_name(&self) -> &str { &self.name }
-    pub fn get_arguments(&self) -> &Vec<NLArgument> { &self.args }
-    pub fn get_block(&self) -> &NLEncapsulationBlock { &self.block }
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+    pub fn get_arguments(&self) -> &Vec<NLArgument> {
+        &self.args
+    }
+    pub fn get_block(&self) -> &NLEncapsulationBlock {
+        &self.block
+    }
 }
 
 pub struct NLStruct<'a> {
@@ -151,9 +190,15 @@ pub struct NLStruct<'a> {
 }
 
 impl<'a> NLStruct<'a> {
-    pub fn get_name(&self) -> &str { &self.name }
-    pub fn get_variables(&self) -> &Vec<NLStructVariable> { &self.variables }
-    pub fn get_implementations(&self) -> &Vec<NLImplementation> { &self.implementations }
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+    pub fn get_variables(&self) -> &Vec<NLStructVariable> {
+        &self.variables
+    }
+    pub fn get_implementations(&self) -> &Vec<NLImplementation> {
+        &self.implementations
+    }
 }
 
 pub struct NLTrait<'a> {
@@ -162,8 +207,12 @@ pub struct NLTrait<'a> {
 }
 
 impl<'a> NLTrait<'a> {
-    pub fn get_name(&self) -> &str { &self.name }
-    pub fn get_implementors(&self) -> &Vec<NLImplementor> { &self.implementors }
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+    pub fn get_implementors(&self) -> &Vec<NLImplementor> {
+        &self.implementors
+    }
 }
 
 pub struct NLImplementation<'a> {
@@ -172,17 +221,21 @@ pub struct NLImplementation<'a> {
 }
 
 impl<'a> NLImplementation<'a> {
-    pub fn get_name(&self) -> &str { &self.name }
-    pub fn get_implementors(&self) -> &Vec<NLImplementor> { &self.implementors }
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+    pub fn get_implementors(&self) -> &Vec<NLImplementor> {
+        &self.implementors
+    }
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
 pub struct EnumVariant<'a> {
     name: &'a str,
-    arguments: Vec<NLArgument<'a>>
+    arguments: Vec<NLArgument<'a>>,
 }
 
-impl <'a> EnumVariant<'a> {
+impl<'a> EnumVariant<'a> {
     pub fn get_name(&self) -> &str {
         self.name
     }
@@ -243,10 +296,18 @@ pub struct OpAssignment<'a> {
 }
 
 impl<'a> OpAssignment<'a> {
-    pub fn is_new(&self) -> bool { self.is_new }
-    pub fn get_variable_to_assign(&self) -> &Vec<OpVariable> { &self.to_assign }
-    pub fn get_types(&self) -> &Vec<NLType> { &self.type_assignments }
-    pub fn get_value(&self) -> &Box<NLOperation> { &self.assignment }
+    pub fn is_new(&self) -> bool {
+        self.is_new
+    }
+    pub fn get_variable_to_assign(&self) -> &Vec<OpVariable> {
+        &self.to_assign
+    }
+    pub fn get_types(&self) -> &Vec<NLType> {
+        &self.type_assignments
+    }
+    pub fn get_value(&self) -> &Box<NLOperation> {
+        &self.assignment
+    }
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
@@ -317,7 +378,7 @@ enum MatchBranch<'a> {
     Enum(MatchEnumBranch<'a>),
     Constant(OpConstant<'a>),
     Range((i128, i128)),
-    AllOther,
+    AllOther, // TODO implement.
 }
 
 #[derive(PartialOrd, PartialEq, Debug)]
@@ -349,7 +410,6 @@ pub enum NLOperation<'a> {
     FunctionCall(FunctionCall<'a>),
 }
 
-
 pub struct NLFile<'a> {
     name: String,
     structs: Vec<NLStruct<'a>>,
@@ -359,11 +419,21 @@ pub struct NLFile<'a> {
 }
 
 impl<'a> NLFile<'a> {
-    pub fn get_name(&self) -> &str { &self.name }
-    pub fn get_structs(&self) -> &Vec<NLStruct> { &self.structs }
-    pub fn get_traits(&self) -> &Vec<NLTrait> { &self.traits }
-    pub fn get_functions(&self) -> &Vec<NLFunction> { &self.functions }
-    pub fn get_enums(&self) -> &Vec<NLEnum> { &self.enums }
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+    pub fn get_structs(&self) -> &Vec<NLStruct> {
+        &self.structs
+    }
+    pub fn get_traits(&self) -> &Vec<NLTrait> {
+        &self.traits
+    }
+    pub fn get_functions(&self) -> &Vec<NLFunction> {
+        &self.functions
+    }
+    pub fn get_enums(&self) -> &Vec<NLEnum> {
+        &self.enums
+    }
 }
 
 #[derive(Debug)]
@@ -391,9 +461,7 @@ fn read_comment(input: &str) -> ParserResult<&str> {
 }
 
 fn read_comments(input: &str) -> ParserResult<&str> {
-    recognize(
-        many0_count(terminated(read_comment, multispace0))
-    )(input)
+    recognize(many0_count(terminated(read_comment, multispace0)))(input)
 }
 
 fn blank(input: &str) -> ParserResult<()> {
@@ -404,7 +472,7 @@ fn is_name(c: char) -> bool {
     match c {
         '_' => true,
         '.' => true, // Used for scoped names.
-        _ => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+        _ => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'),
     }
 }
 
@@ -415,7 +483,7 @@ fn read_struct_or_trait_name(input: &str) -> ParserResult<&str> {
 fn is_method_char(input: char) -> bool {
     match input {
         '_' => true,
-        _ => is_alphanumeric(input as u8)
+        _ => is_alphanumeric(input as u8),
     }
 }
 
@@ -426,13 +494,16 @@ fn read_method_name(input: &str) -> ParserResult<&str> {
 fn read_tuple_of_variable_names(input: &str) -> ParserResult<Vec<&str>> {
     let (input, tuple_str) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
 
-    let (tuple_str, mut variables) = many0(terminated(read_variable_name, tuple((blank, char(','), blank))))(tuple_str)?;
+    let (tuple_str, mut variables) = many0(terminated(
+        read_variable_name,
+        tuple((blank, char(','), blank)),
+    ))(tuple_str)?;
 
     let (_, last_var) = opt(terminated(read_variable_name, blank))(tuple_str)?;
     match last_var {
         Some(var) => {
             variables.push(var);
-        },
+        }
         _ => {} // Do nothing if there was no argument.
     }
 
@@ -443,13 +514,14 @@ fn read_tuple(input: &str) -> ParserResult<NLOperation> {
     let (input, _) = blank(input)?;
     let (input, tuple_str) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
 
-    let (tuple_str, mut tuple) = many0(terminated(read_operation, tuple((blank, char(','), blank))))(tuple_str)?;
+    let (tuple_str, mut tuple) =
+        many0(terminated(read_operation, tuple((blank, char(','), blank))))(tuple_str)?;
 
     let (_, last_item) = opt(terminated(read_operation, blank))(tuple_str)?;
     match last_item {
         Some(item) => {
             tuple.push(item);
-        },
+        }
         _ => {} // Do nothing if there was no argument.
     }
 
@@ -470,11 +542,11 @@ fn read_boolean_constant(input: &str) -> ParserResult<OpConstant> {
             let vek = VerboseErrorKind::Context("boolean must be true or false");
 
             let ve = VerboseError {
-                errors: vec![(input, vek)]
+                errors: vec![(input, vek)],
             };
 
             Err(NomErr::Error(ve))
-        },
+        }
     }
 }
 
@@ -490,23 +562,25 @@ fn is_number(c: char) -> bool {
     match c {
         '.' => true,
         '-' => true,
-        _ => c >= '0' && c <= '9'
+        _ => c >= '0' && c <= '9',
     }
 }
 
 fn parse_number<T>(input: &str) -> ParserResult<T>
-    where T: std::str::FromStr {
+where
+    T: std::str::FromStr,
+{
     let value = input.parse::<T>();
     match value {
         Ok(value) => {
             // Its a valid integer.
             Ok((input, value))
-        },
+        }
         _ => {
             let vek = VerboseErrorKind::Context("parse constant integer");
 
             let ve = VerboseError {
-                errors: vec![(input, vek)]
+                errors: vec![(input, vek)],
             };
 
             Err(NomErr::Error(ve))
@@ -534,7 +608,7 @@ fn read_numerical_constant(input: &str) -> ParserResult<OpConstant> {
 }
 
 fn read_string_constant(input: &str) -> ParserResult<OpConstant> {
-    // String constants are not pre-escaped. The escape can't be preformed without memory copying, and I want to compleatly avoid that in the
+    // String constants are not pre-escaped. The escape can't be preformed without memory copying, and I want to completely avoid that in the
     // parsing phase.
     let (input, _) = blank(input)?;
     let (input, string) = delimited(char('"'), take_while(|c| c != '\"'), char('"'))(input)?;
@@ -543,7 +617,11 @@ fn read_string_constant(input: &str) -> ParserResult<OpConstant> {
 
 fn read_constant_raw(input: &str) -> ParserResult<OpConstant> {
     let (input, _) = blank(input)?;
-    let (input, constant) = alt((read_boolean_constant, read_numerical_constant, read_string_constant))(input)?;
+    let (input, constant) = alt((
+        read_boolean_constant,
+        read_numerical_constant,
+        read_string_constant,
+    ))(input)?;
     Ok((input, constant))
 }
 
@@ -553,7 +631,6 @@ fn read_constant(input: &str) -> ParserResult<NLOperation> {
 }
 
 fn read_assignment(input: &str) -> ParserResult<NLOperation> {
-
     // Are we defining?
     let (input, _) = blank(input)?;
     let (input, is_new) = opt(tag("let"))(input)?;
@@ -567,9 +644,7 @@ fn read_assignment(input: &str) -> ParserResult<NLOperation> {
     variables.reserve(names.len());
 
     for name in names {
-        let variable = OpVariable {
-            name,
-        };
+        let variable = OpVariable { name };
         variables.push(variable);
     }
 
@@ -610,7 +685,9 @@ fn read_assignment(input: &str) -> ParserResult<NLOperation> {
 fn take_operator_symbol(input: &str) -> ParserResult<&str> {
     fn is_operator_symbol(c: char) -> bool {
         match c {
-            '=' | '!' | '~' | '|' | '&' | '^' | '%' | '+' | '-' | '*' | '/' | '<' | '>' | '.' => true,
+            '=' | '!' | '~' | '|' | '&' | '^' | '%' | '+' | '-' | '*' | '/' | '<' | '>' | '.' => {
+                true
+            }
             _ => false,
         }
     }
@@ -630,21 +707,21 @@ fn read_urinary_operator(input: &str) -> ParserResult<NLOperation> {
         "!" => {
             let operator = OpOperator::LogicalNegate(operand);
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "~" => {
             let operator = OpOperator::BitNegate(operand);
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "-" => {
             let operator = OpOperator::ArithmeticNegate(operand);
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
 
         _ => {
             let vek = VerboseErrorKind::Context("unknown operator");
 
             let ve = VerboseError {
-                errors: vec![(input, vek)]
+                errors: vec![(input, vek)],
             };
 
             Err(NomErr::Failure(ve))
@@ -669,95 +746,95 @@ fn read_binary_operator(input: &str) -> ParserResult<NLOperation> {
         "==" => {
             let operator = OpOperator::CompareEqual((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "!=" => {
             let operator = OpOperator::CompareNotEqual((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         // TODO create formal errors for => and =< operators to help the noobs.
         ">=" => {
             let operator = OpOperator::CompareGreaterEqual((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "<=" => {
             let operator = OpOperator::CompareLessEqual((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
 
         ">" => {
             let operator = OpOperator::CompareGreater((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "<" => {
             let operator = OpOperator::CompareLess((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "&&" => {
             let operator = OpOperator::LogicalAnd((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "||" => {
             let operator = OpOperator::LogicalOr((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "^^" => {
             let operator = OpOperator::LogicalXor((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
 
         // Bitwise operators.
         "&" => {
             let operator = OpOperator::BitAnd((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "|" => {
             let operator = OpOperator::BitOr((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "^" => {
             let operator = OpOperator::BitXor((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "<<" => {
             let operator = OpOperator::BitLeftShift((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         ">>" => {
             let operator = OpOperator::BitRightShift((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
 
         // Arithmetic operators.
         "+" => {
             let operator = OpOperator::ArithmeticAdd((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "-" => {
             let operator = OpOperator::ArithmeticSub((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "%" => {
             let operator = OpOperator::ArithmeticMod((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "/" => {
             let operator = OpOperator::ArithmeticDiv((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         "*" => {
             let operator = OpOperator::ArithmeticMul((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
         ".." => {
             let operator = OpOperator::Range((operand_a, operand_b));
             Ok((input, NLOperation::Operator(operator)))
-        },
+        }
 
         _ => {
             let vek = VerboseErrorKind::Context("unknown operator");
 
             let ve = VerboseError {
-                errors: vec![(input, vek)]
+                errors: vec![(input, vek)],
             };
 
             Err(NomErr::Failure(ve))
@@ -769,7 +846,7 @@ fn read_if_statement(input: &str) -> ParserResult<NLOperation> {
     let (input, _) = blank(input)?;
     let (input, _) = tag("if")(input)?;
     let (input, _) = blank(input)?;
-    let (input, condition) =  read_operation(input)?;
+    let (input, condition) = read_operation(input)?;
     let (input, _) = blank(input)?;
     let (input, true_block) = read_code_block(input)?;
     let (input, _) = blank(input)?;
@@ -781,26 +858,27 @@ fn read_if_statement(input: &str) -> ParserResult<NLOperation> {
 
         let block = match block {
             NLOperation::Block(block) => block,
-            _ => panic!("Got something other than a block when it should have been a block.")
+            _ => panic!("Got something other than a block when it should have been a block."),
         };
 
         (input, block)
     } else {
-        (input, NLBlock {
-            operations: vec![],
-        })
+        (input, NLBlock { operations: vec![] })
     };
 
     let true_block = match true_block {
         NLOperation::Block(block) => block,
-        _ => panic!("Got something other than a block when it should have been a block.")
+        _ => panic!("Got something other than a block when it should have been a block."),
     };
 
-    Ok((input, NLOperation::If(IfStatement {
-        condition: Box::new(condition),
-        true_block,
-        false_block,
-    })))
+    Ok((
+        input,
+        NLOperation::If(IfStatement {
+            condition: Box::new(condition),
+            true_block,
+            false_block,
+        }),
+    ))
 }
 
 fn read_basic_loop(input: &str) -> ParserResult<NLOperation> {
@@ -820,10 +898,13 @@ fn read_while_loop(input: &str) -> ParserResult<NLOperation> {
     let (input, _) = blank(input)?;
     let (input, block) = read_code_block_raw(input)?;
 
-    Ok((input, NLOperation::WhileLoop(WhileLoop {
-        condition: Box::new(condition),
-        block,
-    })))
+    Ok((
+        input,
+        NLOperation::WhileLoop(WhileLoop {
+            condition: Box::new(condition),
+            block,
+        }),
+    ))
 }
 
 fn read_for_loop(input: &str) -> ParserResult<NLOperation> {
@@ -838,11 +919,14 @@ fn read_for_loop(input: &str) -> ParserResult<NLOperation> {
     let (input, _) = blank(input)?;
     let (input, block) = read_code_block_raw(input)?;
 
-    Ok((input, NLOperation::ForLoop(ForLoop {
-        variable,
-        iterator: Box::new(iterator),
-        block,
-    })))
+    Ok((
+        input,
+        NLOperation::ForLoop(ForLoop {
+            variable,
+            iterator: Box::new(iterator),
+            block,
+        }),
+    ))
 }
 
 fn read_break_keyword(input: &str) -> ParserResult<NLOperation> {
@@ -854,7 +938,7 @@ fn read_break_keyword(input: &str) -> ParserResult<NLOperation> {
         let vek = VerboseErrorKind::Context("This is not a break operation.");
 
         let ve = VerboseError {
-            errors: vec![(input, vek)]
+            errors: vec![(input, vek)],
         };
 
         Err(NomErr::Error(ve))
@@ -865,9 +949,7 @@ fn read_variable_access_raw(input: &str) -> ParserResult<OpVariable> {
     let (input, _) = blank(input)?;
     let (input, name) = read_variable_name(input)?;
 
-    Ok((input, OpVariable {
-        name
-    }))
+    Ok((input, OpVariable { name }))
 }
 
 fn read_variable_access(input: &str) -> ParserResult<NLOperation> {
@@ -889,10 +971,10 @@ fn read_function_call(input: &str) -> ParserResult<NLOperation> {
         arguments.push(arg);
     };
 
-    Ok((input, NLOperation::FunctionCall(FunctionCall {
-        path,
-        arguments,
-    })))
+    Ok((
+        input,
+        NLOperation::FunctionCall(FunctionCall { path, arguments }),
+    ))
 }
 
 fn read_match(input: &str) -> ParserResult<NLOperation> {
@@ -913,7 +995,6 @@ fn read_match(input: &str) -> ParserResult<NLOperation> {
     }
 
     fn read_enum_branch(input: &str) -> ParserResult<(MatchBranch, NLOperation)> {
-
         let (input, _) = blank(input)?;
         let (input, nl_enum) = read_variable_name(input)?;
         let (input, _) = blank(input)?;
@@ -922,11 +1003,12 @@ fn read_match(input: &str) -> ParserResult<NLOperation> {
         let (input, variant) = read_variable_name(input)?;
         let (input, _) = blank(input)?;
 
-        let (input, var_input) = opt(delimited(char('('), take_while(|c| c != ')'), char(')')))(input)?;
+        let (input, var_input) =
+            opt(delimited(char('('), take_while(|c| c != ')'), char(')')))(input)?;
 
         let variables = if let Some(var_input) = var_input {
-            let (var_input, mut variables) = many0(terminated(read_variable_name, char(',')))(var_input)?;
-    
+            let (var_input, mut variables) =
+                many0(terminated(read_variable_name, char(',')))(var_input)?;
             let (_, last_arg) = opt(read_variable_name)(var_input)?;
             if let Some(arg) = last_arg {
                 variables.push(arg);
@@ -942,7 +1024,7 @@ fn read_match(input: &str) -> ParserResult<NLOperation> {
         let match_branch = MatchBranch::Enum(MatchEnumBranch {
             nl_enum,
             variant,
-            variables
+            variables,
         });
 
         Ok((input, (match_branch, operation)))
@@ -994,10 +1076,13 @@ fn read_match(input: &str) -> ParserResult<NLOperation> {
 
     let (input, _) = char('}')(input)?;
 
-    Ok((input, NLOperation::Match(Match {
-        input: Box::new(input_operation),
-        branches,
-    })))
+    Ok((
+        input,
+        NLOperation::Match(Match {
+            input: Box::new(input_operation),
+            branches,
+        }),
+    ))
 }
 
 fn read_code_block_raw(input: &str) -> ParserResult<NLBlock> {
@@ -1009,9 +1094,7 @@ fn read_code_block_raw(input: &str) -> ParserResult<NLBlock> {
     let (input, _) = blank(input)?;
     let (input, _) = char('}')(input)?;
 
-    Ok((input, NLBlock {
-        operations,
-    }))
+    Ok((input, NLBlock { operations }))
 }
 
 fn read_code_block(input: &str) -> ParserResult<NLOperation> {
@@ -1021,7 +1104,15 @@ fn read_code_block(input: &str) -> ParserResult<NLOperation> {
 }
 
 fn read_sub_operation(input: &str) -> ParserResult<NLOperation> {
-    alt((read_code_block, read_tuple, read_function_call, read_assignment, read_constant, read_urinary_operator, read_variable_access))(input)
+    alt((
+        read_code_block,
+        read_tuple,
+        read_function_call,
+        read_assignment,
+        read_constant,
+        read_urinary_operator,
+        read_variable_access,
+    ))(input)
 }
 
 fn read_operation(input: &str) -> ParserResult<NLOperation> {
@@ -1039,7 +1130,7 @@ fn read_operation(input: &str) -> ParserResult<NLOperation> {
         read_binary_operator,
         read_constant,
         read_urinary_operator,
-        read_variable_access
+        read_variable_access,
     ))(input)
 }
 
@@ -1055,15 +1146,11 @@ fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
             let (input, nl_type) = read_variable_type(input)?;
             let (input, _) = blank(input)?;
 
-            let arg = NLArgument {
-                name,
-                nl_type
-            };
+            let arg = NLArgument { name, nl_type };
 
             Ok((input, arg))
-        },
+        }
         None => {
-
             let (post_input, is_ref) = opt(char('&'))(input)?;
             let is_ref = is_ref.is_some();
 
@@ -1096,10 +1183,11 @@ fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
             }
 
             if !input.is_empty() {
-                let vek = VerboseErrorKind::Context("could not read deceleration of argument correctly");
+                let vek =
+                    VerboseErrorKind::Context("could not read deceleration of argument correctly");
 
                 let ve = VerboseError {
-                    errors: vec![(input, vek)]
+                    errors: vec![(input, vek)],
                 };
 
                 Err(NomErr::Failure(ve))
@@ -1107,25 +1195,26 @@ fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
                 let vek = VerboseErrorKind::Context("there is no argument");
 
                 let ve = VerboseError {
-                    errors: vec![(input, vek)]
+                    errors: vec![(input, vek)],
                 };
 
                 Err(NomErr::Error(ve))
             }
-        },
+        }
     }
 }
 
 fn read_argument_deceleration_list(input: &str) -> ParserResult<Vec<NLArgument>> {
     let (input, arg_input) = delimited(char('('), take_while(|c| c != ')'), char(')'))(input)?;
 
-    let (arg_input, mut arguments) = many0(terminated(read_argument_declaration, char(',')))(arg_input)?;
+    let (arg_input, mut arguments) =
+        many0(terminated(read_argument_declaration, char(',')))(arg_input)?;
 
     let (_, last_arg) = opt(terminated(read_argument_declaration, blank))(arg_input)?;
     match last_arg {
         Some(arg) => {
             arguments.push(arg);
-        },
+        }
         _ => {} // Do nothing if there was no argument.
     }
 
@@ -1159,11 +1248,9 @@ fn read_method(input: &str) -> ParserResult<NLImplementor> {
     let (input, _) = blank(input)?;
     let (input, block) = opt(read_code_block)(input)?;
     let block = match block {
-        Some(block) => {
-            match block {
-                NLOperation::Block(block) => Some(block),
-                _ => None,
-            }
+        Some(block) => match block {
+            NLOperation::Block(block) => Some(block),
+            _ => None,
         },
         _ => None,
     };
@@ -1172,7 +1259,7 @@ fn read_method(input: &str) -> ParserResult<NLImplementor> {
         name,
         arguments: args,
         return_type,
-        block
+        block,
     };
 
     // No block, we expect a semicolon.
@@ -1197,11 +1284,9 @@ fn read_function(input: &str) -> ParserResult<RootDeceleration> {
     let (input, _) = blank(input)?;
     let (input, block) = opt(read_code_block)(input)?;
     let block = match block {
-        Some(block) => {
-            match block {
-                NLOperation::Block(block) => Some(block),
-                _ => None,
-            }
+        Some(block) => match block {
+            NLOperation::Block(block) => Some(block),
+            _ => None,
         },
         _ => None,
     };
@@ -1210,7 +1295,7 @@ fn read_function(input: &str) -> ParserResult<RootDeceleration> {
         name,
         arguments: args,
         return_type,
-        block
+        block,
     };
 
     // No block, we expect a semicolon.
@@ -1242,13 +1327,10 @@ fn read_variant_enum(input: &str) -> ParserResult<RootDeceleration> {
         let arguments = if let Some(args) = args {
             args
         } else {
-            Vec::new()            
+            Vec::new()
         };
 
-        Ok((input, EnumVariant {
-            name, 
-            arguments,
-        }))
+        Ok((input, EnumVariant { name, arguments }))
     }
 
     let (input, _) = blank(input)?;
@@ -1262,10 +1344,7 @@ fn read_variant_enum(input: &str) -> ParserResult<RootDeceleration> {
     let (input, _) = blank(input)?;
     let (input, _) = char('}')(input)?;
 
-    Ok((input, RootDeceleration::Enum(NLEnum {
-        name,
-        variants,
-    })))
+    Ok((input, RootDeceleration::Enum(NLEnum { name, variants })))
 }
 
 fn read_getter(input: &str) -> ParserResult<NLImplementor> {
@@ -1288,24 +1367,20 @@ fn read_getter(input: &str) -> ParserResult<NLImplementor> {
 
         Ok((input, NLImplementor::Getter(getter)))
     } else {
-
         let (input, args) = read_argument_deceleration_list(input)?;
         let (input, nl_type) = read_return_type(input)?;
         let (input, block) = opt(read_code_block)(input)?;
 
         let block = match block {
-            Some(block) => {
-                match block {
-                    NLOperation::Block(block) => Some(block),
-                    _ => None,
-                }
+            Some(block) => match block {
+                NLOperation::Block(block) => Some(block),
+                _ => None,
             },
             _ => None,
         };
 
         match block {
             Some(block) => {
-
                 let getter = NLGetter {
                     name: String::from(name),
                     args,
@@ -1314,7 +1389,7 @@ fn read_getter(input: &str) -> ParserResult<NLImplementor> {
                 };
 
                 Ok((input, NLImplementor::Getter(getter)))
-            },
+            }
             None => {
                 let (input, _) = char(';')(input)?;
 
@@ -1336,27 +1411,25 @@ fn read_setter(input: &str) -> ParserResult<NLImplementor> {
     let (input, _) = tag("set")(input)?;
     let (input, name) = read_method_name(input)?;
     let (input, _) = blank(input)?;
-    let (input, is_default) = opt(tuple((char(':'), blank, tag("default"), blank, char(';'))))(input)?;
+    let (input, is_default) =
+        opt(tuple((char(':'), blank, tag("default"), blank, char(';'))))(input)?;
 
     if is_default.is_some() {
         let setter = NLSetter {
             name,
             args: vec![],
-            block: NLEncapsulationBlock::Default
+            block: NLEncapsulationBlock::Default,
         };
 
         Ok((input, NLImplementor::Setter(setter)))
-    } else  {
-
+    } else {
         let (input, args) = read_argument_deceleration_list(input)?;
         let (input, _) = blank(input)?;
         let (input, block) = opt(read_code_block)(input)?;
         let block = match block {
-            Some(block) => {
-                match block {
-                    NLOperation::Block(block) => Some(block),
-                    _ => None,
-                }
+            Some(block) => match block {
+                NLOperation::Block(block) => Some(block),
+                _ => None,
             },
             _ => None,
         };
@@ -1370,7 +1443,7 @@ fn read_setter(input: &str) -> ParserResult<NLImplementor> {
                 };
 
                 Ok((input, NLImplementor::Setter(setter)))
-            },
+            }
             None => {
                 let (input, _) = char(';')(input)?;
 
@@ -1402,10 +1475,7 @@ fn read_trait(input: &str) -> ParserResult<RootDeceleration> {
     let (input, _) = blank(input)?;
     let (input, _) = char('}')(input)?;
 
-    let new_trait = NLTrait {
-        name,
-        implementors
-    };
+    let new_trait = NLTrait { name, implementors };
 
     Ok((input, RootDeceleration::Trait(new_trait)))
 }
@@ -1416,7 +1486,6 @@ fn read_variable_name(input: &str) -> ParserResult<&str> {
 }
 
 fn identify_struct_or_trait_type(input: &str) -> ParserResult<NLType> {
-
     let (input, is_reference) = opt(char('&'))(input)?;
     let is_reference = is_reference.is_some();
 
@@ -1469,18 +1538,18 @@ fn read_variable_type(input: &str) -> ParserResult<NLType> {
     let (input_new, type_name) = alphanumeric0(input)?;
 
     match type_name {
-        "i8"   => Ok((input_new, NLType::I8)),
-        "i16"  => Ok((input_new, NLType::I16)),
-        "i32"  => Ok((input_new, NLType::I32)),
-        "i64"  => Ok((input_new, NLType::I64)),
-        "u8"   => Ok((input_new, NLType::U8)),
-        "u16"  => Ok((input_new, NLType::U16)),
-        "u32"  => Ok((input_new, NLType::U32)),
-        "u64"  => Ok((input_new, NLType::U64)),
-        "f32"  => Ok((input_new, NLType::F32)),
-        "f64"  => Ok((input_new, NLType::F64)),
+        "i8" => Ok((input_new, NLType::I8)),
+        "i16" => Ok((input_new, NLType::I16)),
+        "i32" => Ok((input_new, NLType::I32)),
+        "i64" => Ok((input_new, NLType::I64)),
+        "u8" => Ok((input_new, NLType::U8)),
+        "u16" => Ok((input_new, NLType::U16)),
+        "u32" => Ok((input_new, NLType::U32)),
+        "u64" => Ok((input_new, NLType::U64)),
+        "f32" => Ok((input_new, NLType::F32)),
+        "f64" => Ok((input_new, NLType::F64)),
         "bool" => Ok((input_new, NLType::Boolean)),
-        "str"  => Ok((input_new, NLType::OwnedString)),
+        "str" => Ok((input_new, NLType::OwnedString)),
 
         _ => {
             // Could it be a referenced string?
@@ -1491,14 +1560,13 @@ fn read_variable_type(input: &str) -> ParserResult<NLType> {
                 return Ok((input_new, NLType::BorrowedString));
             } else {
                 // Okay so we ether have Struct or Trait. Could even be a reference.
-                return identify_struct_or_trait_type(input)
+                return identify_struct_or_trait_type(input);
             }
         }
     }
 }
 
 fn read_struct_variable(input: &str) -> ParserResult<NLStructVariable> {
-
     let (input, _) = blank(input)?;
     let (input, name) = read_variable_name(input)?;
 
@@ -1541,9 +1609,8 @@ fn read_struct(input: &str) -> ParserResult<RootDeceleration> {
     let (input, _) = blank(input)?;
     let (input, _) = char('{')(input)?;
     let (input, _) = blank(input)?;
-    let (input, mut variables) = many0(
-        terminated(read_struct_variable, tuple((blank, char(','))))
-    )(input)?;
+    let (input, mut variables) =
+        many0(terminated(read_struct_variable, tuple((blank, char(',')))))(input)?;
     let (input, _) = blank(input)?;
 
     // Need to read the last struct.
@@ -1562,7 +1629,7 @@ fn read_struct(input: &str) -> ParserResult<RootDeceleration> {
     let nl_struct = NLStruct {
         name,
         variables,
-        implementations
+        implementations,
     };
 
     Ok((input, RootDeceleration::Struct(nl_struct)))
@@ -1578,19 +1645,24 @@ fn parse_file_root(input: &str) -> ParserResult<NLFile> {
     };
 
     if !input.is_empty() {
-        let (input, root_defs) = many1(alt((read_struct, read_trait, read_function, read_variant_enum)))(input)?;
+        let (input, root_defs) = many1(alt((
+            read_struct,
+            read_trait,
+            read_function,
+            read_variant_enum,
+        )))(input)?;
 
         for root_def in root_defs {
             match root_def {
                 RootDeceleration::Struct(nl_struct) => {
                     file.structs.push(nl_struct);
-                },
+                }
                 RootDeceleration::Trait(nl_trait) => {
                     file.traits.push(nl_trait);
-                },
+                }
                 RootDeceleration::Function(nl_func) => {
                     file.functions.push(nl_func);
-                },
+                }
                 RootDeceleration::Enum(nl_enum) => {
                     file.enums.push(nl_enum);
                 }
@@ -1604,7 +1676,6 @@ fn parse_file_root(input: &str) -> ParserResult<NLFile> {
 }
 
 pub fn parse_string<'a>(input: &'a str, file_name: &str) -> Result<NLFile<'a>, ParseError> {
-
     let file = parse_file_root(input);
 
     match file {
@@ -1617,17 +1688,13 @@ pub fn parse_string<'a>(input: &'a str, file_name: &str) -> Result<NLFile<'a>, P
                     #[cfg(test)]
                     println!("{}", message);
 
-                    Err(ParseError {
-                        message
-                    })
+                    Err(ParseError { message })
                 }
-                nom::Err::Incomplete(_) => {
-                    Err(ParseError {
-                        message: "Unexpected end of file.".to_string()
-                    })
-                }
+                nom::Err::Incomplete(_) => Err(ParseError {
+                    message: "Unexpected end of file.".to_string(),
+                }),
             }
-        },
+        }
         Result::Ok(result) => {
             let (_, mut file) = result;
 
@@ -1638,7 +1705,10 @@ pub fn parse_string<'a>(input: &'a str, file_name: &str) -> Result<NLFile<'a>, P
     }
 }
 
-pub fn parse_file<T>(path: &Path, function: &dyn Fn(&NLFile) -> T) -> Result<T, Box<dyn std::error::Error>> {
+pub fn parse_file<T>(
+    path: &Path,
+    function: &dyn Fn(&NLFile) -> T,
+) -> Result<T, Box<dyn std::error::Error>> {
     let mut input_file = File::open(&path)?;
 
     let mut contents = String::new();
@@ -1648,11 +1718,7 @@ pub fn parse_file<T>(path: &Path, function: &dyn Fn(&NLFile) -> T) -> Result<T, 
     let result = parse_string(&contents, &path.file_name().unwrap().to_str().unwrap());
 
     match result {
-        Ok(result) => {
-            Ok(function(&result))
-        },
-        Err(error) => {
-            Err(Box::new(error))
-        }
+        Ok(result) => Ok(function(&result)),
+        Err(error) => Err(Box::new(error)),
     }
 }

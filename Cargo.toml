@@ -8,6 +8,9 @@ authors = ["James Carl <jamescarl96@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-nom = "5.0.0"
-voca_rs = "1.8.0"
-unwrap_to = "0.1.0"
+nom = "6.1"
+voca_rs = "1.8"
+unwrap_to = "0.1"
+cranelift = "0.71"
+cranelift-module = "0.71"
+cranelift-jit = "0.71"
