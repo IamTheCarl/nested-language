@@ -1196,6 +1196,36 @@ mod executable_blocks {
         }
 
         #[test]
+        fn hexadecimal_number() {
+            let code = "0xA5";
+            let constant = pretty_read(code, &read_constant);
+            let constant = unwrap_constant(constant);
+
+            match constant {
+                OpConstant::Integer(constant, cast) => {
+                    assert_eq!(constant, 0xA5, "Constant had wrong value.");
+                    assert_eq!(cast, NLType::I32, "Wrong type cast recommendation.");
+                }
+                _ => panic!("Expected integer for constant type."),
+            }
+        }
+
+        #[test]
+        fn octal_number() {
+            let code = "0o32";
+            let constant = pretty_read(code, &read_constant);
+            let constant = unwrap_constant(constant);
+
+            match constant {
+                OpConstant::Integer(constant, cast) => {
+                    assert_eq!(constant, 0o32, "Constant had wrong value.");
+                    assert_eq!(cast, NLType::I32, "Wrong type cast recommendation.");
+                }
+                _ => panic!("Expected integer for constant type."),
+            }
+        }
+
+        #[test]
         fn negative_number() {
             let code = "-5";
             let constant = pretty_read(code, &read_constant);
@@ -1255,14 +1285,56 @@ mod executable_blocks {
         }
 
         #[test]
-        fn float_with_type() {
-            let code = "5.5f64";
+        fn negative_float() {
+            let code = "-5.5";
+            let constant = pretty_read(code, &read_constant);
+            let constant = unwrap_constant(constant);
+
+            match constant {
+                OpConstant::Float32(constant) => {
+                    assert_eq!(constant, -5.5, "Constant had wrong value.");
+                }
+                _ => panic!("Expected float32 for constant type."),
+            }
+        }
+
+        #[test]
+        fn negative_float_with_type() {
+            let code = "-5.5f64";
             let constant = pretty_read(code, &read_constant);
             let constant = unwrap_constant(constant);
 
             match constant {
                 OpConstant::Float64(constant) => {
-                    assert_eq!(constant, 5.5, "Constant had wrong value.");
+                    assert_eq!(constant, -5.5f64, "Constant had wrong value.");
+                }
+                _ => panic!("Expected float64 for constant type."),
+            }
+        }
+
+        #[test]
+        fn float_with_exponent() {
+            let code = "5.5e14";
+            let constant = pretty_read(code, &read_constant);
+            let constant = unwrap_constant(constant);
+
+            match constant {
+                OpConstant::Float64(constant) => {
+                    assert_eq!(constant, 5.5e14, "Constant had wrong value.");
+                }
+                _ => panic!("Expected float64 for constant type."),
+            }
+        }
+
+        #[test]
+        fn negative_float_with_exponent() {
+            let code = "-5.5e14";
+            let constant = pretty_read(code, &read_constant);
+            let constant = unwrap_constant(constant);
+
+            match constant {
+                OpConstant::Float64(constant) => {
+                    assert_eq!(constant, -5.5e14, "Constant had wrong value.");
                 }
                 _ => panic!("Expected float64 for constant type."),
             }
@@ -1305,6 +1377,23 @@ mod executable_blocks {
             match constant {
                 OpConstant::String(string) => {
                     assert_eq!(string, "A simple string.", "Constant had wrong value.");
+                }
+                _ => panic!("Expected string for constant type."),
+            }
+        }
+
+        #[test]
+        fn string_with_escaped_quote() {
+            let code = "\"A simple \\\"string\\\".\"";
+            let constant = pretty_read(code, &read_constant);
+            let constant = unwrap_constant(constant);
+
+            match constant {
+                OpConstant::String(string) => {
+                    assert_eq!(
+                        string, "A simple \\\"string\\\".",
+                        "Constant had wrong value."
+                    );
                 }
                 _ => panic!("Expected string for constant type."),
             }

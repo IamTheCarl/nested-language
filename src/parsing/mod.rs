@@ -656,6 +656,7 @@ fn read_numerical_constant(input: &str) -> ParserResult<OpConstant> {
     };
 
     if nl_type.is_integer() {
+        // FIXME need to support hexdecimal.
         if nl_type.is_signed() {
             let (_, value) = parse_number::<i64>(number)?;
             Ok((input, OpConstant::Integer(value as u64, nl_type)))
@@ -664,7 +665,8 @@ fn read_numerical_constant(input: &str) -> ParserResult<OpConstant> {
             Ok((input, OpConstant::Integer(value, nl_type)))
         }
     } else {
-        // Has to be a floating point number.
+        // Has to be a floating point number.]
+        // FIXME there's a lot of different styles of float that need to be tested.
         match nl_type {
             NLType::F32 => {
                 let (_, value) = parse_number::<f32>(number)?;
@@ -680,8 +682,10 @@ fn read_numerical_constant(input: &str) -> ParserResult<OpConstant> {
 }
 
 fn read_string_constant(input: &str) -> ParserResult<OpConstant> {
-    // String constants are not pre-escaped. The escape can't be preformed without memory copying, and I want to completely avoid that in the
+    // String constants are not pre-escaped. The escape can't be preformed without memory copying, and I want to avoid that in the
     // parsing phase.
+
+    // FIXME make sure escaped quotes are treated correctly.
     let (input, _) = blank(input)?;
     let (input, string) = delimited(char('"'), take_while(|c| c != '\"'), char('"'))(input)?;
     Ok((input, OpConstant::String(string)))
