@@ -2061,6 +2061,147 @@ mod executable_blocks {
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
         }
+
+        mod precedence {
+            use super::*;
+            #[test]
+            fn mul_div_mod() {
+                let code = "{ 1 % 2 / 3 * 4 }";
+                let block = pretty_read(code, &read_code_block_raw);
+
+                let operation = unwrap_to!(block.operations[0] => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticMul);
+                let b = unwrap_constant_number(b);
+                assert_eq!(b, 4, "Wrong value for constant.");
+
+                let operation = unwrap_to!(**a => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticDiv);
+                let b = unwrap_constant_number(b);
+                assert_eq!(b, 3, "Wrong value for constant.");
+
+                let operation = unwrap_to!(**a => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticMod);
+                let a = unwrap_constant_number(a);
+                let b = unwrap_constant_number(b);
+                assert_eq!(a, 1, "Wrong value for constant.");
+                assert_eq!(b, 2, "Wrong value for constant.");
+            }
+
+            #[test]
+            fn sub_add() {
+                let code = "{ 1 - 2 + 3 }";
+                let block = pretty_read(code, &read_code_block_raw);
+
+                let operation = unwrap_to!(block.operations[0] => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticAdd);
+                let b = unwrap_constant_number(b);
+                assert_eq!(b, 3, "Wrong value for constant.");
+
+                let operation = unwrap_to!(**a => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticSub);
+                let a = unwrap_constant_number(a);
+                let b = unwrap_constant_number(b);
+                assert_eq!(a, 1, "Wrong value for constant.");
+                assert_eq!(b, 2, "Wrong value for constant.");
+            }
+
+            #[test]
+            fn right_shift_left_shift() {
+                let code = "{ 1 >> 2 << 3 }";
+                let block = pretty_read(code, &read_code_block_raw);
+
+                let operation = unwrap_to!(block.operations[0] => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::BitLeftShift);
+                let b = unwrap_constant_number(b);
+                assert_eq!(b, 3, "Wrong value for constant.");
+
+                let operation = unwrap_to!(**a => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::BitRightShift);
+                let a = unwrap_constant_number(a);
+                let b = unwrap_constant_number(b);
+                assert_eq!(a, 1, "Wrong value for constant.");
+                assert_eq!(b, 2, "Wrong value for constant.");
+            }
+
+            #[test]
+            fn bit_or_xor_and() {
+                let code = "{ 1 | 2 ^ 3 & 4 }";
+                let block = pretty_read(code, &read_code_block_raw);
+
+                let operation = unwrap_to!(block.operations[0] => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::BitOr);
+                let a = unwrap_constant_number(a);
+                assert_eq!(a, 1, "Wrong value for constant.");
+
+                let operation = unwrap_to!(**b => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::BitXor);
+                let a = unwrap_constant_number(a);
+                assert_eq!(a, 2, "Wrong value for constant.");
+
+                let operation = unwrap_to!(**b => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::BitAnd);
+                let a = unwrap_constant_number(a);
+                let b = unwrap_constant_number(b);
+                assert_eq!(a, 3, "Wrong value for constant.");
+                assert_eq!(b, 4, "Wrong value for constant.");
+            }
+
+            #[test]
+            fn equalities() {
+                let code = "{ 1 == 2 != 3 < 4 > 5 <= 6 >= 7 }";
+                let block = pretty_read(code, &read_code_block_raw);
+
+                let operation = unwrap_to!(block.operations[0] => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::CompareGreaterEqual);
+                let b = unwrap_constant_number(b);
+                assert_eq!(b, 7, "Wrong value for constant.");
+
+                let operation = unwrap_to!(**a => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::CompareLessEqual);
+                let b = unwrap_constant_number(b);
+                assert_eq!(b, 6, "Wrong value for constant.");
+
+                let operation = unwrap_to!(**a => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::CompareGreater);
+                let b = unwrap_constant_number(b);
+                assert_eq!(b, 5, "Wrong value for constant.");
+
+                let operation = unwrap_to!(**a => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::CompareLess);
+                let b = unwrap_constant_number(b);
+                assert_eq!(b, 4, "Wrong value for constant.");
+
+                let operation = unwrap_to!(**a => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::CompareNotEqual);
+                let b = unwrap_constant_number(b);
+                assert_eq!(b, 3, "Wrong value for constant.");
+
+                let operation = unwrap_to!(**a => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::CompareEqual);
+                let a = unwrap_constant_number(a);
+                let b = unwrap_constant_number(b);
+                assert_eq!(b, 1, "Wrong value for constant.");
+                assert_eq!(a, 2, "Wrong value for constant.");
+            }
+
+            #[test]
+            fn logical_and_or() {
+                let code = "{ 1 || 2 && 3 }";
+                let block = pretty_read(code, &read_code_block_raw);
+
+                let operation = unwrap_to!(block.operations[0] => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::LogicalAnd);
+                let b = unwrap_constant_number(b);
+                assert_eq!(b, 3, "Wrong value for constant.");
+
+                let operation = unwrap_to!(**a => NLOperation::Operator);
+                let (a, b) = unwrap_to!(operation => OpOperator::LogicalOr);
+                let a = unwrap_constant_number(a);
+                let b = unwrap_constant_number(b);
+                assert_eq!(b, 1, "Wrong value for constant.");
+                assert_eq!(a, 2, "Wrong value for constant.");
+            }
+        }
     }
 
     mod if_statements {

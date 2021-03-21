@@ -147,13 +147,16 @@ impl Compiler {
                         OpConstant::Float64(value) => builder.ins().f64const(*value),
                         OpConstant::String(value) => {
                             // This one's not going to be so simple. We have to point to the string in memory.
+                            // Some kind of fat pointer would be ideal.
+                            // fn const_addr<T1>(self, iAddr: Type, constant: T1) -> Value
                             unimplemented!()
                         }
                     };
                 }
-                NLOperation::Assign(_assignment) => {
+                NLOperation::Assign(assignment) => {
                     // if assignment.is_new() {
                     //     // New variable. We need to allocate it a space on the stack (or reuse the space of a variable that's being redefined)
+
                     //     for (name, var_type) in assignment
                     //         .get_variable_to_assign()
                     //         .iter()
@@ -161,9 +164,12 @@ impl Compiler {
                     //     {
                     //         local_variables.declare_variable(name.get_name(), *var_type);
                     //     }
+                    // } else {
                     // }
+
+                    // use_var
                 }
-                NLOperation::VariableAccess(_variable) => {
+                NLOperation::VariableAccess(variable) => {
                     unimplemented!()
                 }
                 NLOperation::Tuple(_operations) => {
