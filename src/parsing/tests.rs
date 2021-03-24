@@ -44,10 +44,10 @@ fn unwrap_constant_boolean<'a>(op: &NLOperation<'a>) -> bool {
     }
 }
 
-fn unwrap_constant_number(op: &NLOperation) -> u64 {
+fn unwrap_constant_signed(op: &NLOperation) -> i64 {
     let constant = unwrap_to!(op => NLOperation::Constant);
     match constant {
-        OpConstant::Integer(value, _) => *value,
+        OpConstant::Signed(value, _) => *value,
         _ => {
             panic!("Expected integer for constant type, got: {:?}");
         }
@@ -1181,17 +1181,17 @@ mod executable_blocks {
         use super::*;
 
         #[test]
-        fn number() {
+        fn decimal_number() {
             let code = "5";
             let constant = pretty_read(code, &read_constant);
             let constant = unwrap_constant(constant);
 
             match constant {
-                OpConstant::Integer(constant, cast) => {
+                OpConstant::Signed(constant, cast) => {
                     assert_eq!(constant, 5, "Constant had wrong value.");
                     assert_eq!(cast, NLType::I32, "Wrong type cast recommendation.");
                 }
-                _ => panic!("Expected integer for constant type."),
+                _ => panic!("Expected Signed for constant type."),
             }
         }
 
@@ -1202,11 +1202,11 @@ mod executable_blocks {
             let constant = unwrap_constant(constant);
 
             match constant {
-                OpConstant::Integer(constant, cast) => {
+                OpConstant::Signed(constant, cast) => {
                     assert_eq!(constant, 0xA5, "Constant had wrong value.");
                     assert_eq!(cast, NLType::I32, "Wrong type cast recommendation.");
                 }
-                _ => panic!("Expected integer for constant type."),
+                _ => panic!("Expected Signed for constant type."),
             }
         }
 
@@ -1217,11 +1217,11 @@ mod executable_blocks {
             let constant = unwrap_constant(constant);
 
             match constant {
-                OpConstant::Integer(constant, cast) => {
+                OpConstant::Signed(constant, cast) => {
                     assert_eq!(constant, 0o32, "Constant had wrong value.");
                     assert_eq!(cast, NLType::I32, "Wrong type cast recommendation.");
                 }
-                _ => panic!("Expected integer for constant type."),
+                _ => panic!("Expected Signed for constant type."),
             }
         }
 
@@ -1232,7 +1232,7 @@ mod executable_blocks {
             let constant = unwrap_constant(constant);
 
             match constant {
-                OpConstant::Integer(constant, cast) => {
+                OpConstant::Signed(constant, cast) => {
                     assert_eq!(constant as i64, -5, "Constant had wrong value.");
                     assert_eq!(cast, NLType::I32, "Wrong type cast recommendation.");
                 }
@@ -1247,7 +1247,7 @@ mod executable_blocks {
             let constant = unwrap_constant(constant);
 
             match constant {
-                OpConstant::Integer(constant, cast) => {
+                OpConstant::Signed(constant, cast) => {
                     assert_eq!(constant, 5, "Constant had wrong value.");
                     assert_eq!(cast, NLType::I64, "Wrong type cast recommendation.");
                 }
@@ -1262,7 +1262,7 @@ mod executable_blocks {
             let constant = unwrap_constant(constant);
 
             match constant {
-                OpConstant::Integer(constant, cast) => {
+                OpConstant::Signed(constant, cast) => {
                     assert_eq!(constant as i64, -5, "Constant had wrong value.");
                     assert_eq!(cast, NLType::I64, "Wrong type cast recommendation.");
                 }
@@ -1319,7 +1319,7 @@ mod executable_blocks {
             let constant = unwrap_constant(constant);
 
             match constant {
-                OpConstant::Float64(constant) => {
+                OpConstant::Float32(constant) => {
                     assert_eq!(constant, 5.5e14, "Constant had wrong value.");
                 }
                 _ => panic!("Expected float64 for constant type."),
@@ -1329,6 +1329,34 @@ mod executable_blocks {
         #[test]
         fn negative_float_with_exponent() {
             let code = "-5.5e14";
+            let constant = pretty_read(code, &read_constant);
+            let constant = unwrap_constant(constant);
+
+            match constant {
+                OpConstant::Float32(constant) => {
+                    assert_eq!(constant, -5.5e14, "Constant had wrong value.");
+                }
+                _ => panic!("Expected float64 for constant type."),
+            }
+        }
+
+        #[test]
+        fn float_with_exponent_and_type() {
+            let code = "5.5e14f64";
+            let constant = pretty_read(code, &read_constant);
+            let constant = unwrap_constant(constant);
+
+            match constant {
+                OpConstant::Float64(constant) => {
+                    assert_eq!(constant, 5.5e14, "Constant had wrong value.");
+                }
+                _ => panic!("Expected float64 for constant type."),
+            }
+        }
+
+        #[test]
+        fn negative_float_with_exponent_and_type() {
+            let code = "-5.5e14f64";
             let constant = pretty_read(code, &read_constant);
             let constant = unwrap_constant(constant);
 
@@ -1443,7 +1471,7 @@ mod executable_blocks {
                     assert_eq!(tuple.len(), 1, "Wrong number of items in tuple.");
                     assert_eq!(
                         tuple[0],
-                        NLOperation::Constant(OpConstant::Integer(1, NLType::I32)),
+                        NLOperation::Constant(OpConstant::Signed(1, NLType::I32)),
                         "Wrong value used for first value."
                     );
                 }
@@ -1461,12 +1489,12 @@ mod executable_blocks {
                     assert_eq!(tuple.len(), 2, "Wrong number of items in tuple.");
                     assert_eq!(
                         tuple[0],
-                        NLOperation::Constant(OpConstant::Integer(1, NLType::I32)),
+                        NLOperation::Constant(OpConstant::Signed(1, NLType::I32)),
                         "Wrong value used for first value."
                     );
                     assert_eq!(
                         tuple[1],
-                        NLOperation::Constant(OpConstant::Integer(2, NLType::I32)),
+                        NLOperation::Constant(OpConstant::Signed(2, NLType::I32)),
                         "Wrong value used for second value."
                     );
                 }
@@ -1484,17 +1512,17 @@ mod executable_blocks {
                     assert_eq!(tuple.len(), 3, "Wrong number of items in tuple.");
                     assert_eq!(
                         tuple[0],
-                        NLOperation::Constant(OpConstant::Integer(1, NLType::I32)),
+                        NLOperation::Constant(OpConstant::Signed(1, NLType::I32)),
                         "Wrong value used for first value."
                     );
                     assert_eq!(
                         tuple[1],
-                        NLOperation::Constant(OpConstant::Integer(2, NLType::I32)),
+                        NLOperation::Constant(OpConstant::Signed(2, NLType::I32)),
                         "Wrong value used for second value."
                     );
                     assert_eq!(
                         tuple[2],
-                        NLOperation::Constant(OpConstant::Integer(3, NLType::I32)),
+                        NLOperation::Constant(OpConstant::Signed(3, NLType::I32)),
                         "Wrong value used for third value."
                     );
                 }
@@ -1527,7 +1555,7 @@ mod executable_blocks {
 
                     assert_eq!(
                         assign.assignment,
-                        Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::I32))),
+                        Box::new(NLOperation::Constant(OpConstant::Signed(5, NLType::I32))),
                         "Wrong assignment."
                     );
 
@@ -1560,7 +1588,7 @@ mod executable_blocks {
 
                     assert_eq!(
                         assign.assignment,
-                        Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::I32))),
+                        Box::new(NLOperation::Constant(OpConstant::Signed(5, NLType::I32))),
                         "Wrong assignment."
                     );
 
@@ -1596,7 +1624,7 @@ mod executable_blocks {
 
                     assert_eq!(
                         assign.assignment,
-                        Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::I32))),
+                        Box::new(NLOperation::Constant(OpConstant::Signed(5, NLType::I32))),
                         "Wrong assignment."
                     );
 
@@ -1629,7 +1657,7 @@ mod executable_blocks {
 
                     assert_eq!(
                         assign.assignment,
-                        Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::I32))),
+                        Box::new(NLOperation::Constant(OpConstant::Signed(5, NLType::I32))),
                         "Wrong assignment."
                     );
 
@@ -1666,8 +1694,8 @@ mod executable_blocks {
                     assert_eq!(
                         assign.assignment,
                         Box::new(NLOperation::Tuple(vec![
-                            NLOperation::Constant(OpConstant::Integer(4, NLType::I32)),
-                            NLOperation::Constant(OpConstant::Integer(5, NLType::I32))
+                            NLOperation::Constant(OpConstant::Signed(4, NLType::I32)),
+                            NLOperation::Constant(OpConstant::Signed(5, NLType::I32))
                         ])),
                         "Wrong assignment."
                     );
@@ -1704,8 +1732,8 @@ mod executable_blocks {
                     assert_eq!(
                         assign.assignment,
                         Box::new(NLOperation::Tuple(vec![
-                            NLOperation::Constant(OpConstant::Integer(4, NLType::I32)),
-                            NLOperation::Constant(OpConstant::Integer(5, NLType::I32))
+                            NLOperation::Constant(OpConstant::Signed(4, NLType::I32)),
+                            NLOperation::Constant(OpConstant::Signed(5, NLType::I32))
                         ])),
                         "Wrong assignment."
                     );
@@ -1747,7 +1775,7 @@ mod executable_blocks {
 
                     assert_eq!(
                         assign.assignment,
-                        Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::I32))),
+                        Box::new(NLOperation::Constant(OpConstant::Signed(5, NLType::I32))),
                         "Wrong assignment."
                     );
 
@@ -1780,7 +1808,7 @@ mod executable_blocks {
 
                     assert_eq!(
                         assign.assignment,
-                        Box::new(NLOperation::Constant(OpConstant::Integer(5, NLType::I32))),
+                        Box::new(NLOperation::Constant(OpConstant::Signed(5, NLType::I32))),
                         "Wrong assignment."
                     );
 
@@ -1812,12 +1840,12 @@ mod executable_blocks {
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareEqual);
 
                 assert_eq!(
-                    unwrap_constant_number(a),
+                    unwrap_constant_signed(a),
                     2,
                     "Wrong number for left operand."
                 );
                 assert_eq!(
-                    unwrap_constant_number(b),
+                    unwrap_constant_signed(b),
                     3,
                     "Wrong number for right operand."
                 );
@@ -1831,12 +1859,12 @@ mod executable_blocks {
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareNotEqual);
 
                 assert_eq!(
-                    unwrap_constant_number(a),
+                    unwrap_constant_signed(a),
                     2,
                     "Wrong number for left operand."
                 );
                 assert_eq!(
-                    unwrap_constant_number(b),
+                    unwrap_constant_signed(b),
                     3,
                     "Wrong number for right operand."
                 );
@@ -1850,12 +1878,12 @@ mod executable_blocks {
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareGreater);
 
                 assert_eq!(
-                    unwrap_constant_number(a),
+                    unwrap_constant_signed(a),
                     2,
                     "Wrong number for left operand."
                 );
                 assert_eq!(
-                    unwrap_constant_number(b),
+                    unwrap_constant_signed(b),
                     3,
                     "Wrong number for right operand."
                 );
@@ -1869,12 +1897,12 @@ mod executable_blocks {
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareLess);
 
                 assert_eq!(
-                    unwrap_constant_number(a),
+                    unwrap_constant_signed(a),
                     2,
                     "Wrong number for left operand."
                 );
                 assert_eq!(
-                    unwrap_constant_number(b),
+                    unwrap_constant_signed(b),
                     3,
                     "Wrong number for right operand."
                 );
@@ -1888,12 +1916,12 @@ mod executable_blocks {
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareGreaterEqual);
 
                 assert_eq!(
-                    unwrap_constant_number(a),
+                    unwrap_constant_signed(a),
                     2,
                     "Wrong number for left operand."
                 );
                 assert_eq!(
-                    unwrap_constant_number(b),
+                    unwrap_constant_signed(b),
                     3,
                     "Wrong number for right operand."
                 );
@@ -1907,12 +1935,12 @@ mod executable_blocks {
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareLessEqual);
 
                 assert_eq!(
-                    unwrap_constant_number(a),
+                    unwrap_constant_signed(a),
                     2,
                     "Wrong number for left operand."
                 );
                 assert_eq!(
-                    unwrap_constant_number(b),
+                    unwrap_constant_signed(b),
                     3,
                     "Wrong number for right operand."
                 );
@@ -1985,7 +2013,7 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let value = unwrap_to!(operation => OpOperator::BitNegate);
 
-                let value = unwrap_constant_number(value);
+                let value = unwrap_constant_signed(value);
                 assert_eq!(value, 0, "Wrong value for constant.");
             }
 
@@ -1997,8 +2025,8 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::BitAnd);
 
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2010,8 +2038,8 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::BitOr);
 
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2023,8 +2051,8 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::BitXor);
 
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2036,8 +2064,8 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::BitLeftShift);
 
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2049,8 +2077,8 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::BitRightShift);
 
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2068,7 +2096,7 @@ mod executable_blocks {
                 let tuple = unwrap_to!(**value => NLOperation::Tuple);
 
                 assert_eq!(tuple.len(), 1, "Tuple is wrong size.");
-                let value = unwrap_constant_number(&tuple[0]);
+                let value = unwrap_constant_signed(&tuple[0]);
                 assert_eq!(value as i64, -5, "Wrong value for constant.");
             }
 
@@ -2079,8 +2107,8 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticMod);
 
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2092,8 +2120,8 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticAdd);
 
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2105,8 +2133,8 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticSub);
 
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2118,8 +2146,8 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticMul);
 
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2131,8 +2159,8 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticDiv);
 
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2144,8 +2172,8 @@ mod executable_blocks {
                 let operation = unwrap_to!(operation => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::Range);
 
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2160,18 +2188,18 @@ mod executable_blocks {
 
                 let operation = unwrap_to!(block.operations[0] => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticMul);
-                let b = unwrap_constant_number(b);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(b, 4, "Wrong value for constant.");
 
                 let operation = unwrap_to!(**a => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticDiv);
-                let b = unwrap_constant_number(b);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(b, 3, "Wrong value for constant.");
 
                 let operation = unwrap_to!(**a => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticMod);
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2183,13 +2211,13 @@ mod executable_blocks {
 
                 let operation = unwrap_to!(block.operations[0] => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticAdd);
-                let b = unwrap_constant_number(b);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(b, 3, "Wrong value for constant.");
 
                 let operation = unwrap_to!(**a => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::ArithmeticSub);
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2201,13 +2229,13 @@ mod executable_blocks {
 
                 let operation = unwrap_to!(block.operations[0] => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::BitLeftShift);
-                let b = unwrap_constant_number(b);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(b, 3, "Wrong value for constant.");
 
                 let operation = unwrap_to!(**a => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::BitRightShift);
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 1, "Wrong value for constant.");
                 assert_eq!(b, 2, "Wrong value for constant.");
             }
@@ -2219,18 +2247,18 @@ mod executable_blocks {
 
                 let operation = unwrap_to!(block.operations[0] => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::BitOr);
-                let a = unwrap_constant_number(a);
+                let a = unwrap_constant_signed(a);
                 assert_eq!(a, 1, "Wrong value for constant.");
 
                 let operation = unwrap_to!(**b => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::BitXor);
-                let a = unwrap_constant_number(a);
+                let a = unwrap_constant_signed(a);
                 assert_eq!(a, 2, "Wrong value for constant.");
 
                 let operation = unwrap_to!(**b => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::BitAnd);
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(a, 3, "Wrong value for constant.");
                 assert_eq!(b, 4, "Wrong value for constant.");
             }
@@ -2242,33 +2270,33 @@ mod executable_blocks {
 
                 let operation = unwrap_to!(block.operations[0] => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareGreaterEqual);
-                let b = unwrap_constant_number(b);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(b, 7, "Wrong value for constant.");
 
                 let operation = unwrap_to!(**a => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareLessEqual);
-                let b = unwrap_constant_number(b);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(b, 6, "Wrong value for constant.");
 
                 let operation = unwrap_to!(**a => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareGreater);
-                let b = unwrap_constant_number(b);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(b, 5, "Wrong value for constant.");
 
                 let operation = unwrap_to!(**a => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareLess);
-                let b = unwrap_constant_number(b);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(b, 4, "Wrong value for constant.");
 
                 let operation = unwrap_to!(**a => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareNotEqual);
-                let b = unwrap_constant_number(b);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(b, 3, "Wrong value for constant.");
 
                 let operation = unwrap_to!(**a => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::CompareEqual);
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(b, 1, "Wrong value for constant.");
                 assert_eq!(a, 2, "Wrong value for constant.");
             }
@@ -2280,13 +2308,13 @@ mod executable_blocks {
 
                 let operation = unwrap_to!(block.operations[0] => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::LogicalAnd);
-                let b = unwrap_constant_number(b);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(b, 3, "Wrong value for constant.");
 
                 let operation = unwrap_to!(**a => NLOperation::Operator);
                 let (a, b) = unwrap_to!(operation => OpOperator::LogicalOr);
-                let a = unwrap_constant_number(a);
-                let b = unwrap_constant_number(b);
+                let a = unwrap_constant_signed(a);
+                let b = unwrap_constant_signed(b);
                 assert_eq!(b, 1, "Wrong value for constant.");
                 assert_eq!(a, 2, "Wrong value for constant.");
             }
@@ -2528,7 +2556,7 @@ mod executable_blocks {
             assert_eq!(branch.nl_enum, "Enum");
             assert_eq!(branch.variant, "One");
 
-            assert_eq!(unwrap_constant_number(operation), 0);
+            assert_eq!(unwrap_constant_signed(operation), 0);
 
             assert_eq!(branch.variables.len(), 0);
         }
@@ -2552,7 +2580,7 @@ mod executable_blocks {
             assert_eq!(branch.nl_enum, "Enum");
             assert_eq!(branch.variant, "One");
 
-            assert_eq!(unwrap_constant_number(operation), 0);
+            assert_eq!(unwrap_constant_signed(operation), 0);
 
             assert_eq!(branch.variables.len(), 0);
         }
@@ -2576,7 +2604,7 @@ mod executable_blocks {
             assert_eq!(branch.nl_enum, "Enum");
             assert_eq!(branch.variant, "One");
 
-            assert_eq!(unwrap_constant_number(operation), 0);
+            assert_eq!(unwrap_constant_signed(operation), 0);
 
             let variables = &branch.variables;
             assert_eq!(variables.len(), 1);
@@ -2602,7 +2630,7 @@ mod executable_blocks {
             assert_eq!(branch.nl_enum, "Enum");
             assert_eq!(branch.variant, "One");
 
-            assert_eq!(unwrap_constant_number(operation), 0);
+            assert_eq!(unwrap_constant_signed(operation), 0);
 
             let variables = &branch.variables;
             assert_eq!(variables.len(), 2);
@@ -2629,7 +2657,7 @@ mod executable_blocks {
             assert_eq!(branch.nl_enum, "Enum");
             assert_eq!(branch.variant, "One");
 
-            assert_eq!(unwrap_constant_number(operation), 0);
+            assert_eq!(unwrap_constant_signed(operation), 0);
 
             assert_eq!(branch.variables.len(), 0);
 
@@ -2638,7 +2666,7 @@ mod executable_blocks {
             assert_eq!(branch.nl_enum, "Enum");
             assert_eq!(branch.variant, "Two");
 
-            assert_eq!(unwrap_constant_number(operation), 1);
+            assert_eq!(unwrap_constant_signed(operation), 1);
 
             assert_eq!(branch.variables.len(), 0);
         }
@@ -2662,7 +2690,7 @@ mod executable_blocks {
             assert_eq!(branch.nl_enum, "Enum");
             assert_eq!(branch.variant, "One");
 
-            assert_eq!(unwrap_constant_number(operation), 0);
+            assert_eq!(unwrap_constant_signed(operation), 0);
 
             assert_eq!(branch.variables.len(), 0);
 
@@ -2671,7 +2699,7 @@ mod executable_blocks {
             assert_eq!(branch.nl_enum, "Enum");
             assert_eq!(branch.variant, "Two");
 
-            assert_eq!(unwrap_constant_number(operation), 1);
+            assert_eq!(unwrap_constant_signed(operation), 1);
 
             assert_eq!(branch.variables.len(), 0);
         }
@@ -2693,7 +2721,7 @@ mod executable_blocks {
             let (branch, operation) = &branches[0];
             let branch = unwrap_to!(branch => MatchBranch::Constant);
             match branch {
-                OpConstant::Integer(value, _) => {
+                OpConstant::Signed(value, _) => {
                     assert_eq!(*value, 42);
                 }
                 _ => {
@@ -2701,7 +2729,7 @@ mod executable_blocks {
                 }
             }
 
-            assert_eq!(unwrap_constant_number(operation), 0);
+            assert_eq!(unwrap_constant_signed(operation), 0);
         }
 
         #[test]
@@ -2725,7 +2753,7 @@ mod executable_blocks {
             assert_eq!(*low, 25);
             assert_eq!(*high, 42);
 
-            assert_eq!(unwrap_constant_number(operation), 0);
+            assert_eq!(unwrap_constant_signed(operation), 0);
         }
     }
 

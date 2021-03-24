@@ -3,17 +3,17 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, take_until, take_while, take_while1},
     character::{
-        complete::{alpha1, alphanumeric0, alphanumeric1, char, digit1, multispace0},
+        complete::{alpha1, alphanumeric0, alphanumeric1, char, digit1, multispace0, one_of},
         is_alphanumeric,
     },
     combinator::{opt, recognize, value},
-    error::{convert_error, VerboseError, VerboseErrorKind},
+    error::{convert_error, FromExternalError, VerboseError, VerboseErrorKind},
     multi::{many0, many0_count, many1},
     sequence::tuple,
     sequence::{delimited, preceded, terminated},
     IResult,
 };
-use std::{fmt::Formatter, fs::File, io::Read, path::Path};
+use std::{fmt::Formatter, fs::File, io::Read, path::Path, str::FromStr};
 
 // All tests are kept in their own module.
 #[cfg(test)]
@@ -319,7 +319,8 @@ enum RootDeceleration<'a> {
 #[derive(PartialOrd, PartialEq, Debug)]
 pub enum OpConstant<'a> {
     Boolean(bool),
-    Integer(u64, NLType<'a>),
+    Unsigned(u64, NLType<'a>),
+    Signed(i64, NLType<'a>),
     Float32(f32),
     Float64(f64),
     String(&'a str),
@@ -503,6 +504,16 @@ impl std::fmt::Display for ParseError {
     }
 }
 
+fn verbose_error<'a>(input: &'a str, message: &'static str) -> NomErr<VerboseError<&'a str>> {
+    let vek = VerboseErrorKind::Context(message);
+
+    let ve = VerboseError {
+        errors: vec![(input, vek)],
+    };
+
+    NomErr::Error(ve)
+}
+
 fn read_comment(input: &str) -> ParserResult<&str> {
     alt((
         preceded(tag("//"), terminated(take_until("\n"), tag("\n"))),
@@ -588,15 +599,7 @@ fn read_boolean_constant(input: &str) -> ParserResult<OpConstant> {
     match value {
         "true" => Ok((input, OpConstant::Boolean(true))),
         "false" => Ok((input, OpConstant::Boolean(false))),
-        _ => {
-            let vek = VerboseErrorKind::Context("boolean must be true or false");
-
-            let ve = VerboseError {
-                errors: vec![(input, vek)],
-            };
-
-            Err(NomErr::Error(ve))
-        }
+        _ => Err(verbose_error(input, "boolean must be true or false")),
     }
 }
 
@@ -609,76 +612,200 @@ fn read_cast(input: &str) -> ParserResult<NLType> {
     read_variable_type(input)
 }
 
-fn is_number(c: char) -> bool {
-    match c {
-        '.' => true,
-        '-' => true,
-        _ => c >= '0' && c <= '9',
-    }
+struct ParsedInteger<'a> {
+    text: &'a str,
+    radix: u32,
 }
 
-fn parse_number<T>(input: &str) -> ParserResult<T>
-where
-    T: std::str::FromStr,
-{
-    let value = input.parse::<T>();
-    match value {
-        Ok(value) => {
-            // Its a valid integer.
-            Ok((input, value))
-        }
-        _ => {
-            let vek = VerboseErrorKind::Context("parse constant integer");
+fn parse_decimal(input: &str) -> ParserResult<ParsedInteger> {
+    let (input, text) =
+        recognize(many1(terminated(one_of("-0123456789"), many0(char('_')))))(input)?;
 
-            let ve = VerboseError {
-                errors: vec![(input, vek)],
-            };
+    let product = ParsedInteger { text, radix: 10 };
+    Ok((input, product))
+}
 
-            Err(NomErr::Error(ve))
-        }
+fn parse_hexadecimal(input: &str) -> ParserResult<ParsedInteger> {
+    let (input, text) = preceded(
+        alt((tag("0x"), tag("0X"))),
+        recognize(many1(terminated(
+            one_of("0123456789abcdefABCDEF"),
+            many0(char('_')),
+        ))),
+    )(input)?;
+
+    let product = ParsedInteger { text, radix: 16 };
+    Ok((input, product))
+}
+
+fn parse_octal(input: &str) -> ParserResult<ParsedInteger> {
+    let (input, text) = preceded(
+        alt((tag("0o"), tag("0O"))),
+        recognize(many1(terminated(one_of("01234567"), many0(char('_'))))),
+    )(input)?;
+
+    let product = ParsedInteger { text, radix: 8 };
+    Ok((input, product))
+}
+
+fn parse_binary(input: &str) -> ParserResult<ParsedInteger> {
+    let (input, text) = preceded(
+        alt((tag("0b"), tag("0B"))),
+        recognize(many1(terminated(one_of("01"), many0(char('_'))))),
+    )(input)?;
+
+    let product = ParsedInteger { text, radix: 2 };
+    Ok((input, product))
+}
+
+fn parse_integer(input: &str) -> ParserResult<ParsedInteger> {
+    alt((parse_hexadecimal, parse_binary, parse_octal, parse_decimal))(input)
+}
+
+fn parse_float(input: &str) -> ParserResult<&str> {
+    fn parse_decimal(input: &str) -> ParserResult<&str> {
+        recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(input)
     }
+
+    alt((
+        recognize(tuple((
+            opt(char('-')),
+            char('.'),
+            parse_decimal,
+            opt(tuple((one_of("eE"), opt(one_of("+-")), parse_decimal))),
+        ))),
+        recognize(tuple((
+            opt(char('-')),
+            parse_decimal,
+            opt(preceded(char('.'), parse_decimal)),
+            one_of("eE"),
+            opt(one_of("+-")),
+            parse_decimal,
+        ))),
+        recognize(tuple((opt(char('-')), parse_decimal, char('.'), opt(parse_decimal)))),
+    ))(input)
 }
 
 fn read_numerical_constant(input: &str) -> ParserResult<OpConstant> {
-    let (input, number) = terminated(take_while1(is_number), blank)(input)?;
-    let (input, nl_type) = match read_variable_type_primitive_no_whitespace(input) {
-        Ok(result) => result,
-        Err(_) => {
-            // Default to a 32bit type if unspecified.
-            if number.contains(".") {
-                // It's probably a floating point type.
-                (input, NLType::F32)
-            } else {
-                // It's probably an integer type.
-                (input, NLType::I32)
+
+    // Try to read as a float first.
+    let float_attempt = parse_float(input);
+
+    if let Ok((input, number)) = float_attempt {
+        // It's a float.
+
+        fn parse_number<T>(input: &str) -> ParserResult<T>
+        where
+            T: std::str::FromStr,
+        {
+            let value = input.parse::<T>();
+            match value {
+                Ok(value) => {
+                    // Its a valid integer.
+                    Ok((input, value))
+                }
+                _ => {
+                    let vek = VerboseErrorKind::Context("parse constant integer");
+                    let ve = VerboseError {
+                        errors: vec![(input, vek)],
+                    };
+                    Err(NomErr::Error(ve))
+                }
             }
         }
-    };
 
-    if nl_type.is_integer() {
-        // FIXME need to support hexdecimal.
-        if nl_type.is_signed() {
-            let (_, value) = parse_number::<i64>(number)?;
-            Ok((input, OpConstant::Integer(value as u64, nl_type)))
-        } else {
-            let (_, value) = parse_number::<u64>(number)?;
-            Ok((input, OpConstant::Integer(value, nl_type)))
+        // Figure out the type.
+        match read_variable_type_primitive_no_whitespace(input) {
+            Ok((input, nl_type)) => match nl_type {
+                // It must be a floating point type.
+                NLType::F32 => {
+                    let (_, number) = parse_number::<f32>(number)?;
+                    Ok((input, OpConstant::Float32(number)))
+                },
+                NLType::F64 => {
+                    let (_, number) = parse_number::<f64>(number)?;
+                    Ok((input, OpConstant::Float64(number)))
+                },
+                _ => Err(verbose_error(
+                    input,
+                    "Cannot represent a fractional number as anything other than a floating point type.",
+                )),
+            },
+            Err(_) => {
+                // If unspecified, assume 32bit.
+                let (_, number) = parse_number::<f32>(number)?;
+                Ok((input, OpConstant::Float32(number)))
+            }, 
         }
     } else {
-        // Has to be a floating point number.]
-        // FIXME there's a lot of different styles of float that need to be tested.
-        match nl_type {
-            NLType::F32 => {
-                let (_, value) = parse_number::<f32>(number)?;
-                Ok((input, OpConstant::Float32(value)))
+        // We attempt to read an integer.
+        let (input, integer) = parse_integer(input)?;
+
+        // Figure out the type.
+        let (input, nl_type) = match read_variable_type_primitive_no_whitespace(input) {
+            Ok((input, nl_type)) => match nl_type {
+                // It can't be a boolean type.
+                NLType::Boolean => Err(verbose_error(
+                    input,
+                    "Cannot represent a number as a boolean.",
+                )),
+                _ => Ok((input, nl_type)), // Okay we're good. Use the type.
+            },
+            Err(_) => Ok((input, NLType::I32)), // If unspecified, assume 32bit.
+        }?;
+
+        if nl_type.is_signed() {
+            match i64::from_str_radix(integer.text, integer.radix) {
+                Ok(number) => Ok((input, OpConstant::Signed(number, nl_type))),
+                Err(_error) => Err(verbose_error(input, "Failed to parse integer.")),
             }
-            NLType::F64 => {
-                let (_, value) = parse_number::<f64>(number)?;
-                Ok((input, OpConstant::Float64(value)))
+        } else {
+            match u64::from_str_radix(integer.text, integer.radix) {
+                Ok(number) => Ok((input, OpConstant::Unsigned(number, nl_type))),
+                Err(_error) => Err(verbose_error(input, "Failed to parse integer.")),
             }
-            _ => unreachable!(),
         }
     }
+
+    // let (input, number) = terminated(take_while1(is_number), blank)(input)?;
+    // let (input, nl_type) = match read_variable_type_primitive_no_whitespace(input) {
+    //     Ok(result) => result,
+    //     Err(_) => {
+    //         // Default to a 32bit type if unspecified.
+    //         if number.contains(".") {
+    //             // It's probably a floating point type.
+    //             (input, NLType::F32)
+    //         } else {
+    //             // It's probably an integer type.
+    //             (input, NLType::I32)
+    //         }
+    //     }
+    // };
+
+    // if nl_type.is_integer() {
+    //     // FIXME need to support hexdecimal.
+    //     if nl_type.is_signed() {
+    //         let (_, value) = parse_number::<i64>(number)?;
+    //         Ok((input, OpConstant::Integer(value as u64, nl_type)))
+    //     } else {
+    //         let (_, value) = parse_number::<u64>(number)?;
+    //         Ok((input, OpConstant::Integer(value, nl_type)))
+    //     }
+    // } else {
+    //     // Has to be a floating point number.]
+    //     // FIXME there's a lot of different styles of float that need to be tested.
+    //     match nl_type {
+    //         NLType::F32 => {
+    //             let (_, value) = parse_number::<f32>(number)?;
+    //             Ok((input, OpConstant::Float32(value)))
+    //         }
+    //         NLType::F64 => {
+    //             let (_, value) = parse_number::<f64>(number)?;
+    //             Ok((input, OpConstant::Float64(value)))
+    //         }
+    //         _ => unreachable!(),
+    //     }
+    // }
 }
 
 fn read_string_constant(input: &str) -> ParserResult<OpConstant> {
@@ -793,15 +920,7 @@ fn read_urinary_operator(input: &str) -> ParserResult<NLOperation> {
             Ok((input, NLOperation::Operator(operator)))
         }
 
-        _ => {
-            let vek = VerboseErrorKind::Context("unknown operator");
-
-            let ve = VerboseError {
-                errors: vec![(input, vek)],
-            };
-
-            Err(NomErr::Failure(ve))
-        }
+        _ => Err(verbose_error(input, "unknown operator")),
     }
 }
 
@@ -906,15 +1025,7 @@ fn read_binary_operator(input: &str) -> ParserResult<NLOperation> {
             Ok((input, NLOperation::Operator(operator)))
         }
 
-        _ => {
-            let vek = VerboseErrorKind::Context("unknown operator");
-
-            let ve = VerboseError {
-                errors: vec![(input, vek)],
-            };
-
-            Err(NomErr::Failure(ve))
-        }
+        _ => Err(verbose_error(input, "unknown operator")),
     }
 }
 
@@ -1011,13 +1122,7 @@ fn read_break_keyword(input: &str) -> ParserResult<NLOperation> {
     if break_keyword.is_some() {
         Ok((input, NLOperation::Break))
     } else {
-        let vek = VerboseErrorKind::Context("This is not a break operation.");
-
-        let ve = VerboseError {
-            errors: vec![(input, vek)],
-        };
-
-        Err(NomErr::Error(ve))
+        Err(verbose_error(input, "This is not a break operation."))
     }
 }
 
@@ -1119,19 +1224,21 @@ fn read_match(input: &str) -> ParserResult<NLOperation> {
     fn read_range_branch(input: &str) -> ParserResult<(MatchBranch, NLOperation)> {
         let (input, _) = blank(input)?;
         let (input, lower) = digit1(input)?;
-        let (_, lower) = parse_number(lower)?;
+        let (_, lower) = parse_integer(lower)?;
 
         let (input, _) = blank(input)?;
         let (input, _) = tag("..")(input)?;
 
         let (input, _) = blank(input)?;
         let (input, higher) = digit1(input)?;
-        let (_, higher) = parse_number(higher)?;
+        let (_, higher) = parse_integer(higher)?;
 
         let (input, _) = blank(input)?;
         let (input, operation) = read_branch_body(input)?;
 
-        Ok((input, (MatchBranch::Range((lower, higher)), operation)))
+        // TODO make work with the new implementation.
+        unimplemented!()
+        // Ok((input, (MatchBranch::Range((lower, higher)), operation)))
     }
 
     fn read_branch(input: &str) -> ParserResult<(MatchBranch, NLOperation)> {
@@ -1259,22 +1366,12 @@ fn read_argument_declaration(input: &str) -> ParserResult<NLArgument> {
             }
 
             if !input.is_empty() {
-                let vek =
-                    VerboseErrorKind::Context("could not read deceleration of argument correctly");
-
-                let ve = VerboseError {
-                    errors: vec![(input, vek)],
-                };
-
-                Err(NomErr::Failure(ve))
+                Err(verbose_error(
+                    input,
+                    "could not read deceleration of argument correctly",
+                ))
             } else {
-                let vek = VerboseErrorKind::Context("there is no argument");
-
-                let ve = VerboseError {
-                    errors: vec![(input, vek)],
-                };
-
-                Err(NomErr::Error(ve))
+                Err(verbose_error(input, "there is no argument"))
             }
         }
     }
@@ -1625,23 +1722,14 @@ fn read_variable_type_primitive_no_whitespace(input: &str) -> ParserResult<NLTyp
         "f64" => Ok((input, NLType::F64)),
         "bool" => Ok((input, NLType::Boolean)),
 
-        _ => {
-            let vek = VerboseErrorKind::Context(
-                "Constants must be primative types: i8-64, u8-64, f32-64, or bool.",
-            );
-
-            let ve = VerboseError {
-                errors: vec![(input, vek)],
-            };
-
-            Err(NomErr::Error(ve))
-        }
+        _ => Err(verbose_error(
+            input,
+            "Constants must be primative types: i8-64, u8-64, f32-64, or bool.",
+        )),
     }
 }
 
 fn read_variable_type_no_whitespace(input: &str) -> ParserResult<NLType> {
-    let (input_new, type_name) = alphanumeric0(input)?;
-
     fn read_advanced_types(input: &str) -> ParserResult<NLType> {
         // Could it be a referenced string?
         let (input, _) = blank(input)?;

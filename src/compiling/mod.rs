@@ -126,32 +126,32 @@ impl Compiler {
                     Self::compile_block(Some(&local_variables), builder, block);
                 }
                 NLOperation::Constant(constant) => {
-                    let _value = match constant {
-                        OpConstant::Boolean(value) => builder.ins().bconst(types::B1, *value),
-                        OpConstant::Integer(value, nl_type) => {
-                            let crane_type = match nl_type {
-                                NLType::I8 => types::I8,
-                                NLType::I16 => types::I16,
-                                NLType::I32 => types::I32,
-                                NLType::I64 => types::I64,
-                                // So fun fact, the hardware treats signed and unsigned integers the same. We have to enforce the type safety.
-                                NLType::U8 => types::I8,
-                                NLType::U16 => types::I16,
-                                NLType::U32 => types::I32,
-                                NLType::U64 => types::I64,
-                                _ => unreachable!(),
-                            };
-                            builder.ins().iconst(crane_type, *value as i64)
-                        }
-                        OpConstant::Float32(value) => builder.ins().f32const(*value),
-                        OpConstant::Float64(value) => builder.ins().f64const(*value),
-                        OpConstant::String(value) => {
-                            // This one's not going to be so simple. We have to point to the string in memory.
-                            // Some kind of fat pointer would be ideal.
-                            // fn const_addr<T1>(self, iAddr: Type, constant: T1) -> Value
-                            unimplemented!()
-                        }
-                    };
+                    // let _value = match constant {
+                    //     OpConstant::Boolean(value) => builder.ins().bconst(types::B1, *value),
+                    //     OpConstant::Integer(value, nl_type) => {
+                    //         let crane_type = match nl_type {
+                    //             NLType::I8 => types::I8,
+                    //             NLType::I16 => types::I16,
+                    //             NLType::I32 => types::I32,
+                    //             NLType::I64 => types::I64,
+                    //             // So fun fact, the hardware treats signed and unsigned integers the same. We have to enforce the type safety.
+                    //             NLType::U8 => types::I8,
+                    //             NLType::U16 => types::I16,
+                    //             NLType::U32 => types::I32,
+                    //             NLType::U64 => types::I64,
+                    //             _ => unreachable!(),
+                    //         };
+                    //         builder.ins().iconst(crane_type, *value as i64)
+                    //     }
+                    //     OpConstant::Float32(value) => builder.ins().f32const(*value),
+                    //     OpConstant::Float64(value) => builder.ins().f64const(*value),
+                    //     OpConstant::String(value) => {
+                    //         // This one's not going to be so simple. We have to point to the string in memory.
+                    //         // Some kind of fat pointer would be ideal.
+                    //         // fn const_addr<T1>(self, iAddr: Type, constant: T1) -> Value
+                    //         unimplemented!()
+                    //     }
+                    // };
                 }
                 NLOperation::Assign(assignment) => {
                     // if assignment.is_new() {
