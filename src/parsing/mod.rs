@@ -1,14 +1,14 @@
 use nom::Err as NomErr;
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_until, take_while, take_while1},
+    bytes::complete::{tag, take_until, take_while, take_while1, is_not, take_while_m_n},
     character::{
-        complete::{alpha1, alphanumeric0, alphanumeric1, char, digit1, multispace0, one_of},
+        complete::{alpha1, alphanumeric0, alphanumeric1, char, digit1, multispace0, one_of, multispace1},
         is_alphanumeric,
     },
-    combinator::{opt, recognize, value},
+    combinator::{opt, recognize, value, map, verify, map_res, map_opt},
     error::{convert_error, FromExternalError, VerboseError, VerboseErrorKind},
-    multi::{many0, many0_count, many1},
+    multi::{many0, many0_count, many1, fold_many0},
     sequence::tuple,
     sequence::{delimited, preceded, terminated},
     IResult,
@@ -323,7 +323,7 @@ pub enum OpConstant<'a> {
     Signed(i64, NLType<'a>),
     Float32(f32),
     Float64(f64),
-    String(&'a str),
+    String(String),
     // TODO add support for defining a constant enum.
 }
 
@@ -766,55 +766,71 @@ fn read_numerical_constant(input: &str) -> ParserResult<OpConstant> {
             }
         }
     }
-
-    // let (input, number) = terminated(take_while1(is_number), blank)(input)?;
-    // let (input, nl_type) = match read_variable_type_primitive_no_whitespace(input) {
-    //     Ok(result) => result,
-    //     Err(_) => {
-    //         // Default to a 32bit type if unspecified.
-    //         if number.contains(".") {
-    //             // It's probably a floating point type.
-    //             (input, NLType::F32)
-    //         } else {
-    //             // It's probably an integer type.
-    //             (input, NLType::I32)
-    //         }
-    //     }
-    // };
-
-    // if nl_type.is_integer() {
-    //     // FIXME need to support hexdecimal.
-    //     if nl_type.is_signed() {
-    //         let (_, value) = parse_number::<i64>(number)?;
-    //         Ok((input, OpConstant::Integer(value as u64, nl_type)))
-    //     } else {
-    //         let (_, value) = parse_number::<u64>(number)?;
-    //         Ok((input, OpConstant::Integer(value, nl_type)))
-    //     }
-    // } else {
-    //     // Has to be a floating point number.]
-    //     // FIXME there's a lot of different styles of float that need to be tested.
-    //     match nl_type {
-    //         NLType::F32 => {
-    //             let (_, value) = parse_number::<f32>(number)?;
-    //             Ok((input, OpConstant::Float32(value)))
-    //         }
-    //         NLType::F64 => {
-    //             let (_, value) = parse_number::<f64>(number)?;
-    //             Ok((input, OpConstant::Float64(value)))
-    //         }
-    //         _ => unreachable!(),
-    //     }
-    // }
 }
 
 fn read_string_constant(input: &str) -> ParserResult<OpConstant> {
-    // String constants are not pre-escaped. The escape can't be preformed without memory copying, and I want to avoid that in the
-    // parsing phase.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum StringFragment<'a> {
+        Literal(&'a str),
+        EscapedChar(char),
+        EscapedWS,
+    }
 
-    // FIXME make sure escaped quotes are treated correctly.
-    let (input, _) = blank(input)?;
-    let (input, string) = delimited(char('"'), take_while(|c| c != '\"'), char('"'))(input)?;
+    fn parse_fragment(input: &str) -> ParserResult<StringFragment> {
+        fn parse_unicode_char(input: &str) -> ParserResult<char> {
+            let parse_hex = take_while_m_n(1, 6, |c: char| c.is_ascii_hexdigit());
+            let parse_delimited_hex = preceded(
+                char('u'),
+                delimited(char('{'), parse_hex, char('}')),
+            );
+            let parse_u32 = map_res(parse_delimited_hex, move |hex| u32::from_str_radix(hex, 16));
+            map_opt(parse_u32, |value| std::char::from_u32(value))(input)
+        }
+        
+        fn parse_escaped_char(input: &str) -> ParserResult<char> {
+            preceded(
+                char('\\'),
+                alt((
+                  parse_unicode_char, // Try that unicode first.
+                  value('\n', char('n')),
+                  value('\r', char('r')),
+                  value('\t', char('t')),
+                  value('\u{08}', char('b')),
+                  value('\u{0C}', char('f')),
+                  value('\\', char('\\')),
+                  value('/', char('/')),
+                  value('"', char('"')),
+                )),
+              )(input)
+        }
+        
+        fn parse_escaped_whitespace(input: &str) -> ParserResult<&str> {
+            preceded(char('\\'), multispace1)(input)
+        }
+
+        fn parse_literal(input: &str) -> ParserResult<&str> {
+            verify(is_not("\"\\"), |s: &str| !s.is_empty())(input)
+        }
+
+        alt((
+            map(parse_literal, StringFragment::Literal),
+            map(parse_escaped_char, StringFragment::EscapedChar),
+            value(StringFragment::EscapedWS, parse_escaped_whitespace),
+          ))(input)
+    }
+
+    let (input, string) = delimited(char('"'), fold_many0(
+        parse_fragment,
+        String::default(),
+        |mut string, fragment| {
+          match fragment {
+            StringFragment::Literal(s) => string.push_str(s),
+            StringFragment::EscapedChar(c) => string.push(c),
+            StringFragment::EscapedWS => {}
+          }
+          string
+        },
+      ), char('"'))(input)?;
     Ok((input, OpConstant::String(string)))
 }
 

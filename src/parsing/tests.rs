@@ -1416,12 +1416,11 @@ mod executable_blocks {
             let constant = pretty_read(code, &read_constant);
             let constant = unwrap_constant(constant);
 
+            println!("STRING: {:?}", constant);
+
             match constant {
                 OpConstant::String(string) => {
-                    assert_eq!(
-                        string, "A simple \\\"string\\\".",
-                        "Constant had wrong value."
-                    );
+                    assert_eq!(string, "A simple \"string\".", "Constant had wrong value.");
                 }
                 _ => panic!("Expected string for constant type."),
             }
